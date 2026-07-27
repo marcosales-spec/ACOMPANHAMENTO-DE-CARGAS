@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acompanhamento de Cargas Congeladas</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- HEADER / NAVBAR -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-blue-600 rounded-lg text-white">
+                    <i data-lucide="truck" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">Acompanhamento de Cargas</h1>
+                    <p class="text-xs text-slate-400">Logística de Congelados & Recebimento</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <button onclick="exportarCSV()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700 flex items-center space-x-2">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Exportar CSV</span>
+                </button>
+                <button onclick="abrirModalNovaCarga()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm transition flex items-center space-x-2">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Nova Carga</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTAINER PRINCIPAL -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- RESUMO DE PREVISÃO E DASHBOARD -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                    <i data-lucide="package" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase">Total Ativas</p>
+                    <p id="stat-total" class="text-2xl font-bold text-slate-900">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-lg">
+                    <i data-lucide="clock" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase">A Caminho</p>
+                    <p id="stat-caminho" class="text-2xl font-bold text-amber-600">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                <div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+                    <i data-lucide="warehouse" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase">Na Portaria / Porta</p>
+                    <p id="stat-porta" class="text-2xl font-bold text-indigo-600">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase">Carregadas / Final</p>
+                    <p id="stat-carregadas" class="text-2xl font-bold text-emerald-600">0</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- BARRA DE CONTROLES (BUSCA, FILTROS E MUDANÇA DE VISÃO) -->
+        <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            
+            <!-- Busca e Filtros -->
+            <div class="flex flex-wrap items-center gap-3 flex-1">
+                <!-- Busca Textual -->
+                <div class="relative flex-1 min-w-[200px]">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="filter-search" oninput="aplicarFiltros()" placeholder="Buscar fornecedor, motorista..." class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                </div>
+
+                <!-- Filtro de Origem -->
+                <select id="filter-origem" onchange="aplicarFiltros()" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700">
+                    <option value="">Todas as Origens</option>
+                    <option value="PR">PR - Paraná</option>
+                    <option value="MG">MG - Minas Gerais</option>
+                    <option value="GO">GO - Goiás</option>
+                </select>
+
+                <!-- Filtro de Status -->
+                <select id="filter-status" onchange="aplicarFiltros()" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700">
+                    <option value="">Todos os Status</option>
+                    <option value="caminho">A Caminho</option>
+                    <option value="porta">Na Porta / Portaria</option>
+                    <option value="carregado">Carregado / Finalizado</option>
+                </select>
+            </div>
+
+            <!-- Botões de Alternância de Visão (Tabela vs Kanban) -->
+            <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 self-start md:self-auto">
+                <button id="btn-view-table" onclick="alternarVisao('table')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition flex items-center space-x-1.5 bg-white text-slate-800 shadow-sm">
+                    <i data-lucide="table" class="w-4 h-4"></i>
+                    <span>Tabela</span>
+                </button>
+                <button id="btn-view-kanban" onclick="alternarVisao('kanban')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition flex items-center space-x-1.5 text-slate-600 hover:text-slate-900">
+                    <i data-lucide="kanban" class="w-4 h-4"></i>
+                    <span>Kanban</span>
+                </button>
+            </div>
+
+        </section>
+
+        <!-- VISÃO 1: TABELA INTELIGENTE -->
+        <section id="view-table" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
+                            <th class="py-3 px-4">Origem</th>
+                            <th class="py-3 px-4">Fornecedor</th>
+                            <th class="py-3 px-4">Motorista</th>
+                            <th class="py-3 px-4">Fim Coleta</th>
+                            <th class="py-3 px-4">Prev. Chegada</th>
+                            <th class="py-3 px-4">Ref. Horas</th>
+                            <th class="py-3 px-4 text-center">Entrada</th>
+                            <th class="py-3 px-4 text-center">Na Porta</th>
+                            <th class="py-3 px-4 text-center">Carregado</th>
+                            <th class="py-3 px-4 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-100 text-slate-700">
+                        <!-- Conteúdo dinâmico via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="empty-state" class="hidden py-12 text-center text-slate-400">
+                <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
+                <p>Nenhuma carga encontrada com os filtros selecionados.</p>
+            </div>
+        </section>
+
+        <!-- VISÃO 2: KANBAN -->
+        <section id="view-kanban" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Coluna: A Caminho -->
+            <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                        <h3 class="font-bold text-slate-700 text-sm uppercase">A Caminho</h3>
+                    </div>
+                    <span id="badge-kanban-caminho" class="px-2 py-0.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-full">0</span>
+                </div>
+                <div id="kanban-caminho" class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
+                    <!-- Cards via JS -->
+                </div>
+            </div>
+
+            <!-- Coluna: Na Porta -->
+            <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-indigo-500"></span>
+                        <h3 class="font-bold text-slate-700 text-sm uppercase">Na Portaria / Porta</h3>
+                    </div>
+                    <span id="badge-kanban-porta" class="px-2 py-0.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-full">0</span>
+                </div>
+                <div id="kanban-porta" class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
+                    <!-- Cards via JS -->
+                </div>
+            </div>
+
+            <!-- Coluna: Carregado / Concluído -->
+            <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                        <h3 class="font-bold text-slate-700 text-sm uppercase">Carregado / Finalizado</h3>
+                    </div>
+                    <span id="badge-kanban-carregado" class="px-2 py-0.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-full">0</span>
+                </div>
+                <div id="kanban-carregado" class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
+                    <!-- Cards via JS -->
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- MODAL DE CADASTRO / EDIÇÃO -->
+    <div id="modal-carga" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-100 animate-in fade-in duration-200">
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <h3 id="modal-title" class="font-bold text-base">Nova Carga</h3>
+                <button onclick="fecharModal()" class="text-slate-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="form-carga" onsubmit="salvarCarga(event)" class="p-6 space-y-4">
+                <input type="hidden" id="carga-id">
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Origem (UF)</label>
+                        <select id="carga-origem" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="PR">PR - Paraná</option>
+                            <option value="MG">MG - Minas Gerais</option>
+                            <option value="GO">GO - Goiás</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">SLA (Horas)</label>
+                        <input type="text" id="carga-ref-horas" placeholder="Ex: 72:00:00" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Fornecedor</label>
+                    <input type="text" id="carga-fornecedor" placeholder="Ex: FRIATO, BEM BRASIL" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Motorista</label>
+                    <input type="text" id="carga-motorista" placeholder="Nome do motorista" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Fim de Coleta</label>
+                        <input type="date" id="carga-fim-coleta" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Prev. Chegada</label>
+                        <input type="date" id="carga-prev-chegada" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-100 grid grid-cols-3 gap-2">
+                    <label class="flex items-center space-x-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                        <input type="checkbox" id="carga-entrada" class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4">
+                        <span>Entrada</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                        <input type="checkbox" id="carga-na-porta" class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4">
+                        <span>Na Porta</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                        <input type="checkbox" id="carga-carregado" class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4">
+                        <span>Carregado</span>
+                    </label>
+                </div>
+
+                <div class="pt-4 flex items-center justify-end space-x-3">
+                    <button type="button" onclick="fecharModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm transition">Salvar Carga</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPT DA APLICAÇÃO -->
+    <script>
+        // Dados Iniciais Baseados na Planilha
+        const dadosIniciais = [
+            { id: '1', origem: 'PR', fimColeta: '2026-06-01', carregado: true, fornecedor: 'FRIELLA', motorista: 'DIONEI', entrada: true, naPorta: false, prevChegada: '2026-06-04', refHoras: '72:00:00' },
+            { id: '2', origem: 'PR', fimColeta: '2026-06-04', carregado: true, fornecedor: 'FRIELLA+COOP SUINOS', motorista: 'ADRIANO', entrada: true, naPorta: false, prevChegada: '2026-06-07', refHoras: '72:00:00' },
+            { id: '3', origem: 'PR', fimColeta: '2026-06-04', carregado: false, fornecedor: 'FRIELLA+LAR', motorista: 'HENRIQUE LUIZ', entrada: true, naPorta: false, prevChegada: '2026-06-07', refHoras: '72:00:00' },
+            { id: '4', origem: 'MG', fimColeta: '2026-06-05', carregado: false, fornecedor: 'BEM BRASIL', motorista: 'HELIO', entrada: false, naPorta: false, prevChegada: '2026-06-08', refHoras: '72:00:00' },
+            { id: '5', origem: 'GO', fimColeta: '2026-06-06', carregado: true, fornecedor: 'FRIATO', motorista: 'EVERALDO', entrada: true, naPorta: true, prevChegada: '2026-06-07', refHoras: '38:00:00' },
+            { id: '6', origem: 'GO', fimColeta: '2026-06-08', carregado: true, fornecedor: 'FRIATO', motorista: 'LEANDRO', entrada: true, naPorta: true, prevChegada: '2026-06-09', refHoras: '39:00:00' }
+        ];
+
+        let cargas = [];
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            const salvas = localStorage.getItem('cargas_congeladas');
+            if (salvas) {
+                cargas = JSON.parse(salvas);
+            } else {
+                cargas = dadosIniciais;
+                salvarStorage();
+            }
+            renderizar();
+            lucide.createIcons();
+        });
+
+        function salvarStorage() {
+            localStorage.setItem('cargas_congeladas', JSON.stringify(cargas));
+        }
+
+        function alternarVisao(visao) {
+            const viewTable = document.getElementById('view-table');
+            const viewKanban = document.getElementById('view-kanban');
+            const btnTable = document.getElementById('btn-view-table');
+            const btnKanban = document.getElementById('btn-view-kanban');
+
+            if (visao === 'table') {
+                viewTable.classList.remove('hidden');
+                viewKanban.classList.add('hidden');
+                btnTable.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition flex items-center space-x-1.5 bg-white text-slate-800 shadow-sm';
+                btnKanban.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition flex items-center space-x-1.5 text-slate-600 hover:text-slate-900';
+            } else {
+                viewTable.classList.add('hidden');
+                viewKanban.classList.remove('hidden');
+                btnKanban.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition flex items-center space-x-1.5 bg-white text-slate-800 shadow-sm';
+                btnTable.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition flex items-center space-x-1.5 text-slate-600 hover:text-slate-900';
+            }
+        }
+
+        function formatarData(dataStr) {
+            if (!dataStr) return '-';
+            const partes = dataStr.split('-');
+            if (partes.length !== 3) return dataStr;
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+
+        function aplicarFiltros() {
+            renderizar();
+        }
+
+        function obterCargasFiltradas() {
+            const busca = document.getElementById('filter-search').value.toLowerCase();
+            const origem = document.getElementById('filter-origem').value;
+            const status = document.getElementById('filter-status').value;
+
+            return cargas.filter(c => {
+                const matchBusca = c.fornecedor.toLowerCase().includes(busca) || c.motorista.toLowerCase().includes(busca);
+                const matchOrigem = !origem || c.origem === origem;
+                
+                let statusCarga = 'caminho';
+                if (c.carregado) statusCarga = 'carregado';
+                else if (c.naPorta) statusCarga = 'porta';
+
+                const matchStatus = !status || statusCarga === status;
+
+                return matchBusca && matchOrigem && matchStatus;
+            });
+        }
+
+        function renderizar() {
+            const filtradas = obterCargasFiltradas();
+            
+            // Stats
+            document.getElementById('stat-total').innerText = cargas.length;
+            document.getElementById('stat-caminho').innerText = cargas.filter(c => !c.carregado && !c.naPorta).length;
+            document.getElementById('stat-porta').innerText = cargas.filter(c => !c.carregado && c.naPorta).length;
+            document.getElementById('stat-carregadas').innerText = cargas.filter(c => c.carregado).length;
+
+            // Renderizar Tabela
+            const tbody = document.getElementById('table-body');
+            const emptyState = document.getElementById('empty-state');
+            tbody.innerHTML = '';
+
+            if (filtradas.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filtradas.forEach(c => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50/80 transition border-b border-slate-100';
+                    tr.innerHTML = `
+                        <td class="py-3 px-4 font-semibold text-slate-800">
+                            <span class="inline-block px-2 py-0.5 rounded text-xs ${c.origem === 'PR' ? 'bg-blue-100 text-blue-700' : c.origem === 'GO' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}">${c.origem}</span>
+                        </td>
+                        <td class="py-3 px-4 font-medium text-slate-900">${c.fornecedor}</td>
+                        <td class="py-3 px-4 text-slate-600">${c.motorista}</td>
+                        <td class="py-3 px-4 text-slate-500">${formatarData(c.fimColeta)}</td>
+                        <td class="py-3 px-4 text-slate-500 font-medium">${formatarData(c.prevChegada)}</td>
+                        <td class="py-3 px-4 text-slate-500">${c.refHoras}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="toggleStatus('${c.id}', 'entrada')" class="px-2.5 py-1 rounded-full text-xs font-semibold ${c.entrada ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.entrada ? 'SIM' : 'NÃO'}</button>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="toggleStatus('${c.id}', 'naPorta')" class="px-2.5 py-1 rounded-full text-xs font-semibold ${c.naPorta ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.naPorta ? 'SIM' : 'NÃO'}</button>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="toggleStatus('${c.id}', 'carregado')" class="px-2.5 py-1 rounded-full text-xs font-semibold ${c.carregado ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.carregado ? 'SIM' : 'NÃO'}</button>
+                        </td>
+                        <td class="py-3 px-4 text-right space-x-1">
+                            <button onclick="editarCarga('${c.id}')" class="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                            <button onclick="excluirCarga('${c.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Renderizar Kanban
+            renderKanban(filtradas);
+            lucide.createIcons();
+        }
+
+        function renderKanban(lista) {
+            const kCaminho = document.getElementById('kanban-caminho');
+            const kPorta = document.getElementById('kanban-porta');
+            const kCarregado = document.getElementById('kanban-carregado');
+
+            kCaminho.innerHTML = '';
+            kPorta.innerHTML = '';
+            kCarregado.innerHTML = '';
+
+            let cCaminho = 0, cPorta = 0, cCarregado = 0;
+
+            lista.forEach(c => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition space-y-3';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded text-xs font-bold ${c.origem === 'PR' ? 'bg-blue-100 text-blue-700' : c.origem === 'GO' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}">${c.origem}</span>
+                        <span class="text-xs text-slate-400 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> Prev: ${formatarData(c.prevChegada)}</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900 text-sm">${c.fornecedor}</h4>
+                        <p class="text-xs text-slate-500 flex items-center gap-1 mt-0.5"><i data-lucide="user" class="w-3 h-3"></i> ${c.motorista}</p>
+                    </div>
+                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <span class="text-slate-400">SLA: ${c.refHoras}</span>
+                        <button onclick="editarCarga('${c.id}')" class="text-blue-600 font-semibold hover:underline">Editar</button>
+                    </div>
+                `;
+
+                if (c.carregado) {
+                    kCarregado.appendChild(card);
+                    cCarregado++;
+                } else if (c.naPorta) {
+                    kPorta.appendChild(card);
+                    cPorta++;
+                } else {
+                    kCaminho.appendChild(card);
+                    cCaminho++;
+                }
+            });
+
+            document.getElementById('badge-kanban-caminho').innerText = cCaminho;
+            document.getElementById('badge-kanban-porta').innerText = cPorta;
+            document.getElementById('badge-kanban-carregado').innerText = cCarregado;
+        }
+
+        function toggleStatus(id, campo) {
+            const idx = cargas.findIndex(c => c.id === id);
+            if (idx !== -1) {
+                cargas[idx][campo] = !cargas[idx][campo];
+                salvarStorage();
+                renderizar();
+            }
+        }
+
+        function abrirModalNovaCarga() {
+            document.getElementById('modal-title').innerText = 'Nova Carga';
+            document.getElementById('form-carga').reset();
+            document.getElementById('carga-id').value = '';
+            document.getElementById('modal-carga').classList.remove('hidden');
+        }
+
+        function fecharModal() {
+            document.getElementById('modal-carga').classList.add('hidden');
+        }
+
+        function editarCarga(id) {
+            const c = cargas.find(item => item.id === id);
+            if (!c) return;
+
+            document.getElementById('modal-title').innerText = 'Editar Carga';
+            document.getElementById('carga-id').value = c.id;
+            document.getElementById('carga-origem').value = c.origem;
+            document.getElementById('carga-ref-horas').value = c.refHoras;
+            document.getElementById('carga-fornecedor').value = c.fornecedor;
+            document.getElementById('carga-motorista').value = c.motorista;
+            document.getElementById('carga-fim-coleta').value = c.fimColeta;
+            document.getElementById('carga-prev-chegada').value = c.prevChegada;
+            document.getElementById('carga-entrada').checked = c.entrada;
+            document.getElementById('carga-na-porta').checked = c.naPorta;
+            document.getElementById('carga-carregado').checked = c.carregado;
+
+            document.getElementById('modal-carga').classList.remove('hidden');
+        }
+
+        function salvarCarga(e) {
+            e.preventDefault();
+            const id = document.getElementById('carga-id').value;
+
+            const nova = {
+                id: id || Date.now().toString(),
+                origem: document.getElementById('carga-origem').value,
+                refHoras: document.getElementById('carga-ref-horas').value,
+                fornecedor: document.getElementById('carga-fornecedor').value,
+                motorista: document.getElementById('carga-motorista').value,
+                fimColeta: document.getElementById('carga-fim-coleta').value,
+                prevChegada: document.getElementById('carga-prev-chegada').value,
+                entrada: document.getElementById('carga-entrada').checked,
+                naPorta: document.getElementById('carga-na-porta').checked,
+                carregado: document.getElementById('carga-carregado').checked
+            };
+
+            if (id) {
+                const idx = cargas.findIndex(c => c.id === id);
+                if (idx !== -1) cargas[idx] = nova;
+            } else {
+                cargas.unshift(nova);
+            }
+
+            salvarStorage();
+            renderizar();
+            fecharModal();
+        }
+
+        function excluirCarga(id) {
+            if (confirm('Tem certeza que deseja excluir esta carga?')) {
+                cargas = cargas.filter(c => c.id !== id);
+                salvarStorage();
+                renderizar();
+            }
+        }
+
+        function exportarCSV() {
+            let csv = 'Origem;Fornecedor;Motorista;Fim Coleta;Prev Chegada;Ref Horas;Entrada;Na Porta;Carregado
+';
+            cargas.forEach(c => {
+                csv += `${c.origem};${c.fornecedor};${c.motorista};${c.fimColeta};${c.prevChegada};${c.refHoras};${c.entrada ? 'SIM' : 'NÃO'};${c.naPorta ? 'SIM' : 'NÃO'};${c.carregado ? 'SIM' : 'NÃO'}
+`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', `cargas_congeladas_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>

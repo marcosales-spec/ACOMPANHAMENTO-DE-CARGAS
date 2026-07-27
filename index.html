@@ -71,7 +71,7 @@
             </div>
         </section>
 
-        <!-- CONTROLES -->
+        <!-- CONTROLES E ABAS DE VISUALIZAÇÃO -->
         <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex flex-wrap items-center gap-3 flex-1">
                 <input type="text" id="filter-search" oninput="aplicarFiltros()" placeholder="Buscar fornecedor, motorista..." class="flex-1 min-w-[200px] px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
@@ -94,6 +94,7 @@
             <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
                 <button id="btn-view-table" onclick="alternarVisao('table')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition bg-white text-slate-800 shadow-sm">Tabela</button>
                 <button id="btn-view-kanban" onclick="alternarVisao('kanban')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900">Kanban</button>
+                <button id="btn-view-calendar" onclick="alternarVisao('calendar')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900">📅 Calendário</button>
             </div>
         </section>
 
@@ -148,6 +149,31 @@
                 </div>
                 <div id="kanban-carregado" class="space-y-3 flex-1 overflow-y-auto"></div>
             </div>
+        </section>
+
+        <!-- CALENDÁRIO -->
+        <section id="view-calendar" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center space-x-3">
+                    <button onclick="mudarMes(-1)" class="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50">‹ Anterior</button>
+                    <h2 id="calendar-month-year" class="text-lg font-bold text-slate-800 capitalize"></h2>
+                    <button onclick="mudarMes(1)" class="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50">Próximo ›</button>
+                </div>
+                <button onclick="irParaHoje()" class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100">Hoje</button>
+            </div>
+
+            <!-- GRID DO CALENDÁRIO -->
+            <div class="grid grid-cols-7 gap-px bg-slate-200 rounded-lg overflow-hidden border border-slate-200 text-center text-xs font-semibold text-slate-600">
+                <div class="bg-slate-100 py-2">Dom</div>
+                <div class="bg-slate-100 py-2">Seg</div>
+                <div class="bg-slate-100 py-2">Ter</div>
+                <div class="bg-slate-100 py-2">Qua</div>
+                <div class="bg-slate-100 py-2">Qui</div>
+                <div class="bg-slate-100 py-2">Sex</div>
+                <div class="bg-slate-100 py-2">Sáb</div>
+            </div>
+
+            <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-slate-200 rounded-lg overflow-hidden border border-slate-200 min-h-[500px]"></div>
         </section>
 
     </main>
@@ -234,15 +260,12 @@
         ];
 
         let cargas = [];
+        let dataAtualCalendario = new Date();
 
         window.addEventListener('DOMContentLoaded', () => {
             const salvas = localStorage.getItem('cargas_congeladas');
             if (salvas) {
-                try {
-                    cargas = JSON.parse(salvas);
-                } catch(e) {
-                    cargas = dadosIniciais;
-                }
+                try { cargas = JSON.parse(salvas); } catch(e) { cargas = dadosIniciais; }
             } else {
                 cargas = dadosIniciais;
                 salvarStorage();
@@ -257,19 +280,30 @@
         function alternarVisao(visao) {
             const viewTable = document.getElementById('view-table');
             const viewKanban = document.getElementById('view-kanban');
+            const viewCalendar = document.getElementById('view-calendar');
+
             const btnTable = document.getElementById('btn-view-table');
             const btnKanban = document.getElementById('btn-view-kanban');
+            const btnCalendar = document.getElementById('btn-view-calendar');
+
+            viewTable.classList.add('hidden');
+            viewKanban.classList.add('hidden');
+            viewCalendar.classList.add('hidden');
+
+            btnTable.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900';
+            btnKanban.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900';
+            btnCalendar.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900';
 
             if (visao === 'table') {
                 viewTable.classList.remove('hidden');
-                viewKanban.classList.add('hidden');
                 btnTable.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition bg-white text-slate-800 shadow-sm';
-                btnKanban.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900';
-            } else {
-                viewTable.classList.add('hidden');
+            } else if (visao === 'kanban') {
                 viewKanban.classList.remove('hidden');
                 btnKanban.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition bg-white text-slate-800 shadow-sm';
-                btnTable.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900';
+            } else {
+                viewCalendar.classList.remove('hidden');
+                btnCalendar.className = 'px-3 py-1.5 text-xs font-semibold rounded-md transition bg-white text-slate-800 shadow-sm';
+                renderizarCalendario();
             }
         }
 
@@ -350,6 +384,7 @@
             }
 
             renderKanban(filtradas);
+            renderizarCalendario();
         }
 
         function renderKanban(lista) {
@@ -396,6 +431,83 @@
             document.getElementById('badge-kanban-caminho').innerText = cCaminho;
             document.getElementById('badge-kanban-porta').innerText = cPorta;
             document.getElementById('badge-kanban-carregado').innerText = cCarregado;
+        }
+
+        // FUNÇÕES DO CALENDÁRIO
+        function renderizarCalendario() {
+            const grid = document.getElementById('calendar-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            const ano = dataAtualCalendario.getFullYear();
+            const mes = dataAtualCalendario.getMonth();
+
+            const primeiroDiaMes = new Date(ano, mes, 1);
+            const ultimoDiaMes = new Date(ano, mes + 1, 0);
+
+            const diaSemanaInicio = primeiroDiaMes.getDay();
+            const totalDias = ultimoDiaMes.getDate();
+
+            const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            document.getElementById('calendar-month-year').innerText = `${nomesMeses[mes]} ${ano}`;
+
+            const filtradas = obterCargasFiltradas();
+
+            // Espaços em branco antes do início do mês
+            for (let i = 0; i < diaSemanaInicio; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'bg-slate-50/50 min-h-[90px] p-2';
+                grid.appendChild(cell);
+            }
+
+            // Dias do mês
+            for (let dia = 1; dia <= totalDias; dia++) {
+                const dataFormatada = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+                
+                const cargasNoDia = filtradas.filter(c => c.prevChegada === dataFormatada);
+
+                const cell = document.createElement('div');
+                cell.className = 'bg-white min-h-[90px] p-2 flex flex-col justify-start border-t border-slate-100 hover:bg-slate-50 transition';
+
+                const hoje = new Date();
+                const isHoje = hoje.getFullYear() === ano && hoje.getMonth() === mes && hoje.getDate() === dia;
+
+                let htmlCargas = '';
+                cargasNoDia.forEach(c => {
+                    let corStatus = 'bg-amber-100 text-amber-800 border-amber-300';
+                    if (c.carregado) corStatus = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                    else if (c.naPorta) corStatus = 'bg-indigo-100 text-indigo-800 border-indigo-300';
+
+                    htmlCargas += `
+                        <div onclick="editarCarga('${c.id}')" class="mt-1 p-1 rounded text-[10px] font-medium border ${corStatus} cursor-pointer hover:shadow-xs truncate" title="${c.fornecedor} - ${c.motorista}">
+                            <div class="font-bold truncate">${c.fornecedor}</div>
+                            <div class="text-[9px] opacity-80 truncate">🚚 ${c.motorista}</div>
+                        </div>
+                    `;
+                });
+
+                cell.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold ${isHoje ? 'bg-blue-600 text-white w-5 h-5 flex items-center justify-center rounded-full' : 'text-slate-700'}">${dia}</span>
+                        ${cargasNoDia.length > 0 ? `<span class="text-[9px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full">${cargasNoDia.length}</span>` : ''}
+                    </div>
+                    <div class="space-y-1 mt-1 overflow-y-auto max-h-[70px] custom-scrollbar">
+                        ${htmlCargas}
+                    </div>
+                `;
+
+                grid.appendChild(cell);
+            }
+        }
+
+        function mudarMes(delta) {
+            dataAtualCalendario.setMonth(dataAtualCalendario.getMonth() + delta);
+            renderizarCalendario();
+        }
+
+        function irParaHoje() {
+            dataAtualCalendario = new Date();
+            renderizarCalendario();
         }
 
         function toggleStatus(id, campo) {

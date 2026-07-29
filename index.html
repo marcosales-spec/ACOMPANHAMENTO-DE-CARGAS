@@ -143,13 +143,11 @@
             </div>
         </section>
 
-        <!-- KANBAN E CALENDÁRIO... (Mantido o código do Kanban e Calendário iguais ao anterior) -->
+        <!-- KANBAN E CALENDÁRIO -->
         <section id="view-kanban" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- (Omitido para não alongar, é o mesmo código da versão anterior) -->
             <div class="col-span-3 text-center text-slate-400 py-10">Kanban Ativo (Vide Funções)</div>
         </section>
         <section id="view-calendar" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
-             <!-- (Omitido para não alongar, é o mesmo código da versão anterior) -->
              <div class="col-span-3 text-center text-slate-400 py-10">Calendário Ativo (Vide Funções)</div>
         </section>
 
@@ -185,7 +183,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-indigo-600 mb-1">Nº do Pedido</label>
-                        <input type="text" id="carga-pedido" placeholder="Ex: PED-001" class="w-full px-3 py-2 border border-indigo-200 bg-indigo-50/30 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <input type="text" id="carga-pedido" placeholder="Ex: 32045" class="w-full px-3 py-2 border border-indigo-200 bg-indigo-50/30 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                     </div>
                 </div>
 
@@ -243,15 +241,14 @@
 
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
+        // REMOVIDO O ITEM FICTÍCIO PRD-100 DAQUI:
         const dadosIniciais = [
             { 
-                id: '1', origem: 'PR', numeroPedido: 'PED-001', 
+                id: '1', origem: 'PR', numeroPedido: '32045', 
                 dataColeta: '2026-07-28', horaColeta: '15:43', fimColeta: '2026-07-29', horaFimColeta: '04:48', 
                 carregado: false, fornecedor: 'FRIELLA', motorista: 'DIONISMAR', 
                 entrada: true, naPorta: false, descarregada: 'NÃO', prevChegada: '2026-07-31', refHoras: '48:00:00',
-                produtos: [
-                    { codigo: 'PRD-100', descricao: 'Batata Palito 2Kg', qtd: 800, unidade: 'CX' }
-                ] 
+                produtos: [] // Vazio para aceitar apenas o que for importado da planilha!
             }
         ];
 
@@ -272,7 +269,7 @@
             localStorage.setItem('cargas_congeladas_v2', JSON.stringify(cargas));
         }
 
-        /* ----- LÓGICA DE IMPORTAÇÃO EXCEL/CSV ----- */
+        /* ----- LÓGICA DE IMPORTAÇÃO CORRIGIDA ----- */
         function importarPlanilhaDeItens(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -289,36 +286,48 @@
                     let itensImportados = 0;
                     let pedidosEncontrados = new Set();
 
-                    // Limpar produtos antigos antes da nova importação (Opcional - aqui estamos somando)
+                    // 1. Limpa os produtos antigos das cargas que existem no arquivo lido
                     json.forEach(row => {
-                        // Aceita variações do nome da coluna (Pedido, Numero_Pedido, etc)
-                        const pedido = String(row['Pedido'] || row['PEDIDO'] || row['Numero_Pedido'] || '').trim();
+                        const pedido = String(row['Pedido'] || row['PEDIDO'] || row['Numero_Pedido'] || row['pedido'] || '').trim();
                         if (!pedido) return;
 
-                        const cargaIndex = cargas.findIndex(c => c.numeroPedido === pedido);
-                        if (cargaIndex !== -1) {
-                            if (!cargas[cargaIndex].produtos) cargas[cargaIndex].produtos = [];
-                            
-                            cargas[cargaIndex].produtos.push({
-                                codigo: row['Codigo'] || row['CODIGO'] || '-',
-                                descricao: row['Descricao'] || row['DESCRICAO'] || '-',
-                                qtd: row['Quantidade'] || row['QUANTIDADE'] || row['Qtd'] || 0,
-                                unidade: row['Unidade'] || row['UNIDADE'] || 'UN'
-                            });
-                            
-                            itensImportados++;
+                        const carga = cargas.find(c => String(c.numeroPedido).trim() === pedido);
+                        if (carga && !pedidosEncontrados.has(pedido)) {
+                            carga.produtos = []; // Limpa antes de colocar novos!
                             pedidosEncontrados.add(pedido);
                         }
                     });
 
-                    alert(`Sucesso! ${itensImportados} produtos vinculados a ${pedidosEncontrados.size} carga(s).`);
+                    // 2. Insere os produtos lidos na planilha
+                    json.forEach(row => {
+                        const pedido = String(row['Pedido'] || row['PEDIDO'] || row['Numero_Pedido'] || row['pedido'] || '').trim();
+                        if (!pedido) return;
+
+                        const carga = cargas.find(c => String(c.numeroPedido).trim() === pedido);
+                        if (carga) {
+                            carga.produtos.push({
+                                codigo: row['Codigo'] || row['CODIGO'] || row['codigo'] || '-',
+                                descricao: row['Descricao'] || row['DESCRICAO'] || row['descricao'] || '-',
+                                qtd: row['Quantidade'] || row['QUANTIDADE'] || row['qtd'] || row['Qtd'] || 0,
+                                unidade: row['Unidade'] || row['UNIDADE'] || row['unidade'] || 'CX'
+                            });
+                            itensImportados++;
+                        }
+                    });
+
+                    if (itensImportados > 0) {
+                        alert(`Sucesso! ${itensImportados} produto(s) vinculado(s) a ${pedidosEncontrados.size} carga(s).`);
+                    } else {
+                        alert("Nenhum pedido correspondente foi encontrado na planilha.");
+                    }
+
                     salvarStorage();
                     renderizar();
                 } catch (error) {
                     alert("Erro ao ler o arquivo. Certifique-se que é um Excel ou CSV válido.");
                     console.error(error);
                 } finally {
-                    document.getElementById('input-importar-itens').value = ''; // Limpa o input
+                    document.getElementById('input-importar-itens').value = ''; 
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -328,6 +337,8 @@
             const linhaFilha = document.getElementById(`produtos-carga-${id}`);
             const botao = document.getElementById(`btn-toggle-${id}`);
             
+            if (!linhaFilha) return;
+
             if (linhaFilha.classList.contains('hidden')) {
                 linhaFilha.classList.remove('hidden');
                 botao.innerText = '-';
@@ -340,9 +351,7 @@
                 botao.classList.add('bg-blue-100', 'text-blue-600');
             }
         }
-        /* ------------------------------------------- */
 
-        // (As funções de cálculo de horas foram mantidas iguais)
         function aoMudarOrigem() {
             const uf = document.getElementById('carga-origem').value;
             const horasSelect = document.getElementById('carga-ref-horas');
@@ -404,7 +413,11 @@
             return `${p[2]}/${p[1]}/${p[0]}`;
         }
 
-        function alternarVisao(visao) { /* ...mesmo código... */ }
+        function alternarVisao(visao) {
+            document.getElementById('view-table').classList.toggle('hidden', visao !== 'table');
+            document.getElementById('view-kanban').classList.toggle('hidden', visao !== 'kanban');
+            document.getElementById('view-calendar').classList.toggle('hidden', visao !== 'calendar');
+        }
 
         function aplicarFiltros() { renderizar(); }
 
@@ -447,7 +460,7 @@
                 trPrincipal.className = `${rowBgClass} transition border-b border-slate-100`;
                 trPrincipal.innerHTML = `
                     <td class="py-2.5 px-3 text-center space-x-2">
-                        <button type="button" onclick="editarCarga('${c.id}')" class="text-blue-600 hover:underline font-medium text-xs">Editar</button>
+                        <button type="button" onclick="editarCarga('${c.id}')" class="text-blue-600 hover:underline font-medium text-xs cursor-pointer">Editar</button>
                     </td>
                     <td class="py-2.5 px-3 font-semibold text-slate-800">
                         <span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-200">${c.origem}</span>
@@ -507,7 +520,7 @@
                         <td colspan="15" class="p-4 bg-slate-100/50">
                             <div class="max-w-2xl bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
                                 <h4 class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider flex items-center space-x-2">
-                                    <span>📦 Itens do Pedido:</span>
+                                    <span>📦 ITENS DO PEDIDO:</span>
                                     <span class="text-indigo-600">${c.numeroPedido}</span>
                                 </h4>
                                 <div class="flex flex-col">
@@ -521,7 +534,6 @@
             });
         }
 
-        // Funções de Toggles e Edição (Mesmas do código anterior)
         function toggleStatus(id, campo) {
             const idx = cargas.findIndex(c => c.id === id);
             if (idx !== -1) { cargas[idx][campo] = !cargas[idx][campo]; salvarStorage(); renderizar(); }

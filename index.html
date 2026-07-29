@@ -29,10 +29,10 @@
             </div>
 
             <div class="flex items-center space-x-3">
-                <button onclick="exportarCSV()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700 flex items-center space-x-2 cursor-pointer">
+                <button type="button" onclick="exportarCSV()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700 flex items-center space-x-2 cursor-pointer">
                     <span>Exportar CSV</span>
                 </button>
-                <button onclick="abrirModalNovaCarga()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm transition flex items-center space-x-2 cursor-pointer">
+                <button type="button" onclick="abrirModalNovaCarga()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm transition flex items-center space-x-2 cursor-pointer">
                     <span class="text-lg leading-none">+</span>
                     <span>Nova Carga</span>
                 </button>
@@ -92,9 +92,9 @@
             </div>
 
             <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
-                <button id="btn-view-table" onclick="alternarVisao('table')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition bg-white text-slate-800 shadow-sm cursor-pointer">Tabela</button>
-                <button id="btn-view-kanban" onclick="alternarVisao('kanban')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900 cursor-pointer">Kanban</button>
-                <button id="btn-view-calendar" onclick="alternarVisao('calendar')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900 cursor-pointer">📅 Calendário</button>
+                <button id="btn-view-table" type="button" onclick="alternarVisao('table')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition bg-white text-slate-800 shadow-sm cursor-pointer">Tabela</button>
+                <button id="btn-view-kanban" type="button" onclick="alternarVisao('kanban')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900 cursor-pointer">Kanban</button>
+                <button id="btn-view-calendar" type="button" onclick="alternarVisao('calendar')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900 cursor-pointer">📅 Calendário</button>
             </div>
         </section>
 
@@ -110,8 +110,9 @@
                             <th class="py-3 px-4">Data Coleta</th>
                             <th class="py-3 px-4">Hora Coleta</th>
                             <th class="py-3 px-4">Fim Coleta</th>
-                            <th class="py-3 px-4">Prev. Chegada</th>
-                            <th class="py-3 px-4">Ref. Horas</th>
+                            <th class="py-3 px-4">Hora Fim</th>
+                            <th class="py-3 px-4 font-semibold text-blue-600">Prev. Chegada</th>
+                            <th class="py-3 px-4">SLA (Horas)</th>
                             <th class="py-3 px-4 text-center">Entrada</th>
                             <th class="py-3 px-4 text-center">Na Porta</th>
                             <th class="py-3 px-4 text-center">Carregado</th>
@@ -157,11 +158,11 @@
         <section id="view-calendar" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
             <div class="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div class="flex items-center space-x-3">
-                    <button onclick="mudarMes(-1)" class="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">‹ Anterior</button>
+                    <button type="button" onclick="mudarMes(-1)" class="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">‹ Anterior</button>
                     <h2 id="calendar-month-year" class="text-lg font-bold text-slate-800 capitalize"></h2>
-                    <button onclick="mudarMes(1)" class="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">Próximo ›</button>
+                    <button type="button" onclick="mudarMes(1)" class="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">Próximo ›</button>
                 </div>
-                <button onclick="irParaHoje()" class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 cursor-pointer">Hoje</button>
+                <button type="button" onclick="irParaHoje()" class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 cursor-pointer">Hoje</button>
             </div>
 
             <div class="grid grid-cols-7 gap-px bg-slate-200 rounded-lg overflow-hidden border border-slate-200 text-center text-xs font-semibold text-slate-600">
@@ -201,13 +202,13 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">SLA (Horas)</label>
-                        <input type="text" id="carga-ref-horas" placeholder="Ex: 72:00:00" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="text" id="carga-ref-horas" placeholder="Ex: 48:00:00" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Fornecedor</label>
-                    <input type="text" id="carga-fornecedor" placeholder="Ex: FRIATO, BEM BRASIL" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <input type="text" id="carga-fornecedor" placeholder="Ex: BEM BRASIL" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
 
                 <div>
@@ -222,19 +223,24 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Hora da Coleta</label>
-                        <input type="time" id="carga-hora-coleta" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="time" id="carga-hora-coleta" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Fim de Coleta</label>
-                        <input type="date" id="carga-fim-coleta" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Fim da Coleta</label>
+                        <input type="date" id="carga-fim-coleta" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Prev. Chegada</label>
-                        <input type="date" id="carga-prev-chegada" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Hora Fim Coleta</label>
+                        <input type="time" id="carga-hora-fim-coleta" onchange="calcularPrevisaoAutomaticamente()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
+                </div>
+
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <label class="block text-xs font-bold text-blue-900 mb-1">Previsão de Chegada (Calculada)</label>
+                    <input type="date" id="carga-prev-chegada" required class="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm font-semibold text-blue-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
 
                 <div class="pt-2 border-t border-slate-100 grid grid-cols-3 gap-2">
@@ -254,7 +260,7 @@
 
                 <div class="pt-4 flex items-center justify-end space-x-3">
                     <button type="button" onclick="fecharModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition cursor-pointer">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm transition cursor-pointer">Salvar Carga</button>
+                    <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm transition cursor-pointer">Salvar Carga</button>
                 </div>
             </form>
         </div>
@@ -263,12 +269,8 @@
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
         const dadosIniciais = [
-            { id: '1', origem: 'PR', dataColeta: '2026-06-01', horaColeta: '08:00', fimColeta: '2026-06-01', carregado: true, fornecedor: 'FRIELLA', motorista: 'DIONEI', entrada: true, naPorta: false, prevChegada: '2026-06-04', refHoras: '72:00:00' },
-            { id: '2', origem: 'PR', dataColeta: '2026-06-04', horaColeta: '10:30', fimColeta: '2026-06-04', carregado: true, fornecedor: 'FRIELLA+COOP SUINOS', motorista: 'ADRIANO', entrada: true, naPorta: false, prevChegada: '2026-06-07', refHoras: '72:00:00' },
-            { id: '3', origem: 'PR', dataColeta: '2026-06-04', horaColeta: '14:00', fimColeta: '2026-06-04', carregado: false, fornecedor: 'FRIELLA+LAR', motorista: 'HENRIQUE LUIZ', entrada: true, naPorta: false, prevChegada: '2026-06-07', refHoras: '72:00:00' },
-            { id: '4', origem: 'MG', dataColeta: '2026-06-05', horaColeta: '09:15', fimColeta: '2026-06-05', carregado: false, fornecedor: 'BEM BRASIL', motorista: 'HELIO', entrada: false, naPorta: false, prevChegada: '2026-06-08', refHoras: '72:00:00' },
-            { id: '5', origem: 'GO', dataColeta: '2026-06-06', horaColeta: '16:45', fimColeta: '2026-06-06', carregado: true, fornecedor: 'FRIATO', motorista: 'EVERALDO', entrada: true, naPorta: true, prevChegada: '2026-06-07', refHoras: '38:00:00' },
-            { id: '6', origem: 'GO', dataColeta: '2026-06-08', horaColeta: '07:30', fimColeta: '2026-06-08', carregado: true, fornecedor: 'FRIATO', motorista: 'LEANDRO', entrada: true, naPorta: true, prevChegada: '2026-06-09', refHoras: '39:00:00' }
+            { id: '1', origem: 'PR', dataColeta: '2026-06-01', horaColeta: '08:00', fimColeta: '2026-06-01', horaFimColeta: '12:00', carregado: true, fornecedor: 'FRIELLA', motorista: 'DIONEI', entrada: true, naPorta: false, prevChegada: '2026-06-04', refHoras: '72:00:00' },
+            { id: '2', origem: 'MG', dataColeta: '2026-07-29', horaColeta: '00:08', fimColeta: '2026-07-30', horaFimColeta: '23:22', carregado: true, fornecedor: 'BEM BRASIL', motorista: 'MARCO ANTONIO', entrada: false, naPorta: false, prevChegada: '2026-08-01', refHoras: '48:00:00' }
         ];
 
         let cargas = [];
@@ -287,6 +289,30 @@
 
         function salvarStorage() {
             localStorage.setItem('cargas_congeladas', JSON.stringify(cargas));
+        }
+
+        function calcularPrevisaoAutomaticamente() {
+            const fimColeta = document.getElementById('carga-fim-coleta').value;
+            const refHoras = document.getElementById('carga-ref-horas').value;
+
+            if (!fimColeta) return;
+
+            let horasAdicionais = 0;
+            if (refHoras) {
+                const partes = refHoras.split(':');
+                horasAdicionais = parseInt(partes[0], 10) || 0;
+            }
+
+            if (horasAdicionais <= 0) horasAdicionais = 24;
+
+            const dataFim = new Date(fimColeta + 'T00:00:00');
+            dataFim.setHours(dataFim.getHours() + horasAdicionais);
+
+            const ano = dataFim.getFullYear();
+            const mes = String(dataFim.getMonth() + 1).padStart(2, '0');
+            const dia = String(dataFim.getDate()).padStart(2, '0');
+
+            document.getElementById('carga-prev-chegada').value = `${ano}-${mes}-${dia}`;
         }
 
         function alternarVisao(visao) {
@@ -377,20 +403,21 @@
                         <td class="py-3 px-4 text-slate-600 font-medium">${formatarData(c.dataColeta)}</td>
                         <td class="py-3 px-4 text-slate-600 font-medium">${c.horaColeta || '-'}</td>
                         <td class="py-3 px-4 text-slate-500">${formatarData(c.fimColeta)}</td>
-                        <td class="py-3 px-4 text-slate-500 font-medium">${formatarData(c.prevChegada)}</td>
+                        <td class="py-3 px-4 text-slate-500">${c.horaFimColeta || '-'}</td>
+                        <td class="py-3 px-4 text-blue-700 font-bold bg-blue-50/50">${formatarData(c.prevChegada)}</td>
                         <td class="py-3 px-4 text-slate-500">${c.refHoras}</td>
                         <td class="py-3 px-4 text-center">
-                            <button onclick="toggleStatus('${c.id}', 'entrada')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.entrada ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.entrada ? 'SIM' : 'NÃO'}</button>
+                            <button type="button" onclick="toggleStatus('${c.id}', 'entrada')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.entrada ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.entrada ? 'SIM' : 'NÃO'}</button>
                         </td>
                         <td class="py-3 px-4 text-center">
-                            <button onclick="toggleStatus('${c.id}', 'naPorta')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.naPorta ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.naPorta ? 'SIM' : 'NÃO'}</button>
+                            <button type="button" onclick="toggleStatus('${c.id}', 'naPorta')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.naPorta ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.naPorta ? 'SIM' : 'NÃO'}</button>
                         </td>
                         <td class="py-3 px-4 text-center">
-                            <button onclick="toggleStatus('${c.id}', 'carregado')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.carregado ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.carregado ? 'SIM' : 'NÃO'}</button>
+                            <button type="button" onclick="toggleStatus('${c.id}', 'carregado')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.carregado ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.carregado ? 'SIM' : 'NÃO'}</button>
                         </td>
                         <td class="py-3 px-4 text-right space-x-2">
-                            <button onclick="editarCarga('${c.id}')" class="text-blue-600 hover:underline font-medium text-xs cursor-pointer">Editar</button>
-                            <button onclick="excluirCarga('${c.id}')" class="text-rose-600 hover:underline font-medium text-xs cursor-pointer">Excluir</button>
+                            <button type="button" onclick="editarCarga('${c.id}')" class="text-blue-600 hover:underline font-medium text-xs cursor-pointer">Editar</button>
+                            <button type="button" onclick="excluirCarga('${c.id}')" class="text-rose-600 hover:underline font-medium text-xs cursor-pointer">Excluir</button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -418,16 +445,16 @@
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
                         <span class="px-2 py-0.5 rounded text-xs font-bold ${c.origem === 'PR' ? 'bg-blue-100 text-blue-700' : c.origem === 'GO' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}">${c.origem}</span>
-                        <span class="text-xs text-slate-400">Prev: ${formatarData(c.prevChegada)}</span>
+                        <span class="text-xs font-bold text-blue-600">Prev: ${formatarData(c.prevChegada)}</span>
                     </div>
                     <div>
                         <h4 class="font-bold text-slate-900 text-sm">${c.fornecedor}</h4>
                         <p class="text-xs text-slate-500 mt-0.5">Motorista: ${c.motorista}</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Coleta: ${formatarData(c.dataColeta)} às ${c.horaColeta || '--:--'}</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Fim Coleta: ${formatarData(c.fimColeta)} às ${c.horaFimColeta || '--:--'}</p>
                     </div>
                     <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                         <span class="text-slate-400">SLA: ${c.refHoras}</span>
-                        <button onclick="editarCarga('${c.id}')" class="text-blue-600 font-semibold hover:underline cursor-pointer">Editar</button>
+                        <button type="button" onclick="editarCarga('${c.id}')" class="text-blue-600 font-semibold hover:underline cursor-pointer">Editar</button>
                     </div>
                 `;
 
@@ -554,6 +581,7 @@
             document.getElementById('carga-data-coleta').value = c.dataColeta || '';
             document.getElementById('carga-hora-coleta').value = c.horaColeta || '';
             document.getElementById('carga-fim-coleta').value = c.fimColeta;
+            document.getElementById('carga-hora-fim-coleta').value = c.horaFimColeta || '';
             document.getElementById('carga-prev-chegada').value = c.prevChegada;
             document.getElementById('carga-entrada').checked = c.entrada;
             document.getElementById('carga-na-porta').checked = c.naPorta;
@@ -575,6 +603,7 @@
                 dataColeta: document.getElementById('carga-data-coleta').value,
                 horaColeta: document.getElementById('carga-hora-coleta').value,
                 fimColeta: document.getElementById('carga-fim-coleta').value,
+                horaFimColeta: document.getElementById('carga-hora-fim-coleta').value,
                 prevChegada: document.getElementById('carga-prev-chegada').value,
                 entrada: document.getElementById('carga-entrada').checked,
                 naPorta: document.getElementById('carga-na-porta').checked,
@@ -602,9 +631,9 @@
         }
 
         function exportarCSV() {
-            let csv = 'Origem;Fornecedor;Motorista;Data Coleta;Hora Coleta;Fim Coleta;Prev Chegada;Ref Horas;Entrada;Na Porta;Carregado\n';
+            let csv = 'Origem;Fornecedor;Motorista;Data Coleta;Hora Coleta;Fim Coleta;Hora Fim;Prev Chegada;Ref Horas;Entrada;Na Porta;Carregado\n';
             cargas.forEach(c => {
-                csv += `${c.origem};${c.fornecedor};${c.motorista};${c.dataColeta || ''};${c.horaColeta || ''};${c.fimColeta};${c.prevChegada};${c.refHoras};${c.entrada ? 'SIM' : 'NÃO'};${c.naPorta ? 'SIM' : 'NÃO'};${c.carregado ? 'SIM' : 'NÃO'}\n`;
+                csv += `${c.origem};${c.fornecedor};${c.motorista};${c.dataColeta || ''};${c.horaColeta || ''};${c.fimColeta};${c.horaFimColeta || ''};${c.prevChegada};${c.refHoras};${c.entrada ? 'SIM' : 'NÃO'};${c.naPorta ? 'SIM' : 'NÃO'};${c.carregado ? 'SIM' : 'NÃO'}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

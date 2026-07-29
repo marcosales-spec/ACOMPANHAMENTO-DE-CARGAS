@@ -113,7 +113,7 @@
                             <th class="py-3 px-4">Hora Fim</th>
                             <th class="py-3 px-4 font-semibold text-indigo-600">Tempo Coleta</th>
                             <th class="py-3 px-4 font-semibold text-blue-600">Prev. Chegada</th>
-                            <th class="py-3 px-4">SLA (Horas)</th>
+                            <th class="py-3 px-4">Horas</th>
                             <th class="py-3 px-4 text-center">Entrada</th>
                             <th class="py-3 px-4 text-center">Na Porta</th>
                             <th class="py-3 px-4 text-center">Carregado</th>
@@ -202,7 +202,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">SLA (Horas)</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Horas</label>
                         <select id="carga-ref-horas" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
                             <option value="48:00:00">48:00:00 (48 horas)</option>
                             <option value="72:00:00">72:00:00 (72 horas)</option>
@@ -305,21 +305,19 @@
             localStorage.setItem('cargas_congeladas', JSON.stringify(cargas));
         }
 
-        // Sugere SLA automático baseado na UF
         function aoMudarOrigem() {
             const uf = document.getElementById('carga-origem').value;
-            const slaSelect = document.getElementById('carga-ref-horas');
+            const horasSelect = document.getElementById('carga-ref-horas');
             
             if (uf === 'PR') {
-                slaSelect.value = '48:00:00';
+                horasSelect.value = '48:00:00';
             } else if (uf === 'MG' || uf === 'GO') {
-                slaSelect.value = '72:00:00';
+                horasSelect.value = '72:00:00';
             }
             
             calcularPrevisaoAutomaticamente();
         }
 
-        // CÁLCULO DE TEMPO DE COLETA E PREVISÃO DE CHEGADA
         function calcularPrevisaoAutomaticamente() {
             const dataColeta = document.getElementById('carga-data-coleta').value;
             const horaColeta = document.getElementById('carga-hora-coleta').value || '00:00';
@@ -328,7 +326,7 @@
             const horaFimColeta = document.getElementById('carga-hora-fim-coleta').value || '00:00';
             const refHoras = document.getElementById('carga-ref-horas').value;
 
-            // 1. CÁLCULO DO TEMPO DE COLETA (Diferença entre Data/Hora Coleta e Data/Hora Fim)
+            // 1. CÁLCULO DO TEMPO DE COLETA
             if (dataColeta && fimColeta) {
                 const [a1, m1, d1] = dataColeta.split('-').map(Number);
                 const [h1, min1] = horaColeta.split(':').map(Number);
@@ -351,16 +349,16 @@
                 document.getElementById('carga-tempo-coleta').value = '--:--';
             }
 
-            // 2. CÁLCULO DA PREVISÃO DE CHEGADA (Fim Coleta + SLA)
+            // 2. CÁLCULO DA PREVISÃO DE CHEGADA
             if (!fimColeta) return;
 
-            let horasSLA = 0;
-            let minutosSLA = 0;
+            let horasAdicionais = 0;
+            let minutosAdicionais = 0;
 
             if (refHoras) {
                 const partes = refHoras.split(':');
-                horasSLA = parseInt(partes[0], 10) || 0;
-                minutosSLA = parseInt(partes[1], 10) || 0;
+                horasAdicionais = parseInt(partes[0], 10) || 0;
+                minutosAdicionais = parseInt(partes[1], 10) || 0;
             }
 
             const [ano, mes, dia] = fimColeta.split('-').map(Number);
@@ -368,9 +366,8 @@
 
             const dataCalculada = new Date(ano, mes - 1, dia, hora, minuto);
 
-            // Soma SLA
-            dataCalculada.setHours(dataCalculada.getHours() + horasSLA);
-            dataCalculada.setMinutes(dataCalculada.getMinutes() + minutosSLA);
+            dataCalculada.setHours(dataCalculada.getHours() + horasAdicionais);
+            dataCalculada.setMinutes(dataCalculada.getMinutes() + minutosAdicionais);
 
             const anoResult = dataCalculada.getFullYear();
             const mesResult = String(dataCalculada.getMonth() + 1).padStart(2, '0');
@@ -545,7 +542,7 @@
                         <p class="text-xs text-slate-500 mt-0.5">Tempo Coleta: <strong class="text-indigo-600">${tempoColetaStr}</strong></p>
                     </div>
                     <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span class="text-slate-400">SLA: ${c.refHoras}</span>
+                        <span class="text-slate-400">Horas: ${c.refHoras}</span>
                         <button type="button" onclick="editarCarga('${c.id}')" class="text-blue-600 font-semibold hover:underline cursor-pointer">Editar</button>
                     </div>
                 `;
@@ -654,7 +651,6 @@
             document.getElementById('form-carga').reset();
             document.getElementById('carga-id').value = '';
             
-            // Pré-seleciona SLA relativo à origem inicial
             aoMudarOrigem();
             
             document.getElementById('modal-carga').classList.remove('hidden');
@@ -729,7 +725,7 @@
         }
 
         function exportarCSV() {
-            let csv = 'Origem;Fornecedor;Motorista;Data Coleta;Hora Coleta;Fim Coleta;Hora Fim;Tempo Coleta;Prev Chegada;Ref Horas;Entrada;Na Porta;Carregado\n';
+            let csv = 'Origem;Fornecedor;Motorista;Data Coleta;Hora Coleta;Fim Coleta;Hora Fim;Tempo Coleta;Prev Chegada;Horas;Entrada;Na Porta;Carregado\n';
             cargas.forEach(c => {
                 const tempoStr = calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta);
                 csv += `${c.origem};${c.fornecedor};${c.motorista};${c.dataColeta || ''};${c.horaColeta || ''};${c.fimColeta};${c.horaFimColeta || ''};${tempoStr};${c.prevChegada};${c.refHoras};${c.entrada ? 'SIM' : 'NÃO'};${c.naPorta ? 'SIM' : 'NÃO'};${c.carregado ? 'SIM' : 'NÃO'}\n`;

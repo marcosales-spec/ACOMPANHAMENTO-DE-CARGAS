@@ -31,7 +31,7 @@
         <div class="max-w-[98%] mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="p-2 bg-blue-600 rounded-lg text-white">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4z"/></svg>
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 011 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4z"/></svg>
                 </div>
                 <div>
                     <h1 class="font-bold text-lg leading-tight">Acompanhamento de Cargas</h1>
@@ -101,6 +101,13 @@
             <div class="flex flex-wrap items-center gap-3 flex-1">
                 <input type="text" id="filter-search" oninput="aplicarFiltros()" placeholder="Buscar pedido, fornecedor, motorista..." class="flex-1 min-w-[250px] px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
 
+                <!-- FILTRO DE TIPO DE FRETE (CIF/FOB) -->
+                <select id="filter-tipo-frete" onchange="aplicarFiltros()" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer">
+                    <option value="">Todos os Fretes</option>
+                    <option value="FOB">FOB</option>
+                    <option value="CIF">CIF</option>
+                </select>
+
                 <select id="filter-origem" onchange="aplicarFiltros()" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer">
                     <option value="">Todas as Origens</option>
                     <option value="PR">PR - Paraná</option>
@@ -124,6 +131,7 @@
                     <thead>
                         <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
                             <th class="py-2.5 px-3 text-center">Ações</th>
+                            <th class="py-2.5 px-3">Frete</th>
                             <th class="py-2.5 px-3">Origem</th>
                             <th class="py-2.5 px-3">Pedido / Itens</th>
                             <th class="py-2.5 px-3">Fornecedor</th>
@@ -197,7 +205,14 @@
             <form id="form-carga" onsubmit="salvarCarga(event)" class="p-6 space-y-4">
                 <input type="hidden" id="carga-id">
 
-                <div class="grid grid-cols-3 gap-4">
+                <div class="grid grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo Frete</label>
+                        <select id="carga-tipo-frete" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer font-bold">
+                            <option value="FOB">FOB</option>
+                            <option value="CIF">CIF</option>
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Origem (UF)</label>
                         <select id="carga-origem" required onchange="aoMudarOrigem()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
@@ -312,6 +327,7 @@
             // Salva na nuvem (Firebase)
             db.ref('cargas').set(cargas);
         }
+
         function alternarVisao(modo) {
             modoVisao = modo;
             const btnTabela = document.getElementById('btn-view-table');
@@ -402,9 +418,11 @@
                         if (!carga) {
                             const fornecedorPlanilha = extrairValorColuna(row, ['fornecedor', 'fornec', 'cliente', 'empresa']) || 'A PREENCHER';
                             const motoristaPlanilha = extrairValorColuna(row, ['motorista', 'mot', 'condutor', 'transporte']) || 'A PREENCHER';
+                            const tipoFretePlanilha = extrairValorColuna(row, ['frete', 'tipo', 'cif', 'fob']).toUpperCase().includes('CIF') ? 'CIF' : 'FOB';
 
                             carga = {
                                 id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+                                tipoFrete: tipoFretePlanilha,
                                 origem: 'PR',
                                 refHoras: '48:00:00',
                                 numeroPedido: pedido,
@@ -558,6 +576,7 @@
         function obterCargasFiltradas() {
             const busca = (document.getElementById('filter-search').value || '').toLowerCase();
             const origem = document.getElementById('filter-origem').value;
+            const tipoFrete = document.getElementById('filter-tipo-frete').value;
             const status = document.getElementById('filter-status').value;
 
             return cargas.filter(c => {
@@ -565,12 +584,13 @@
                                 || (c.motorista || '').toLowerCase().includes(busca)
                                 || (c.numeroPedido || '').toLowerCase().includes(busca);
                 const matchOrigem = !origem || c.origem === origem;
+                const matchFrete = !tipoFrete || (c.tipoFrete || 'FOB') === tipoFrete;
                 
                 let statusCarga = 'transito';
                 if (c.descarregada === 'SIM') statusCarga = 'descarregada';
                 else if (c.naPorta) statusCarga = 'porta';
 
-                return matchBusca && matchOrigem && (!status || statusCarga === status);
+                return matchBusca && matchOrigem && matchFrete && (!status || statusCarga === status);
             });
         }
 
@@ -594,19 +614,24 @@
             tbody.innerHTML = '';
 
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="15" class="py-8 text-center text-slate-400">Nenhuma carga cadastrada ou encontrada. Importe uma planilha para começar!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="16" class="py-8 text-center text-slate-400">Nenhuma carga cadastrada ou encontrada. Importe uma planilha para começar!</td></tr>`;
                 return;
             }
 
             filtradas.forEach(c => {
                 const temProdutos = c.produtos && c.produtos.length > 0;
                 const rowBgClass = c.descarregada === 'SIM' ? 'bg-emerald-50/70 hover:bg-emerald-100/70' : 'hover:bg-slate-50';
+                const tipoFreteAtual = c.tipoFrete || 'FOB';
+                const badgeFreteClass = tipoFreteAtual === 'CIF' ? 'bg-purple-100 text-purple-800 border-purple-200' : 'bg-amber-100 text-amber-800 border-amber-200';
 
                 const trPrincipal = document.createElement('tr');
                 trPrincipal.className = `${rowBgClass} transition border-b border-slate-100`;
                 trPrincipal.innerHTML = `
                     <td class="py-2.5 px-3 text-center space-x-2">
                         <button type="button" onclick="editarCarga('${c.id}')" class="text-blue-600 hover:underline font-bold text-xs cursor-pointer">Editar</button>
+                    </td>
+                    <td class="py-2.5 px-3">
+                        <span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${badgeFreteClass}">${tipoFreteAtual}</span>
                     </td>
                     <td class="py-2.5 px-3 font-semibold text-slate-800">
                         <span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-200">${c.origem}</span>
@@ -668,7 +693,7 @@
                     `).join('');
 
                     trFilha.innerHTML = `
-                        <td colspan="15" class="p-4 bg-slate-100/50">
+                        <td colspan="16" class="p-4 bg-slate-100/50">
                             <div class="max-w-2xl bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
                                 <h4 class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider flex items-center space-x-2">
                                     <span>📦 ITENS DO PEDIDO:</span>
@@ -702,7 +727,6 @@
                 const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
                 const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
 
-                // Espaços vazios do início do mês
                 for (let i = 0; i < primeiroDiaSemana; i++) {
                     diasParaExibir.push(null);
                 }
@@ -712,9 +736,8 @@
                     diasParaExibir.push(dt);
                 }
             } else {
-                // MODO SEMANAL (Semana Atual, Próxima ou Passada)
                 const curr = new Date(dataCalendarioAtual);
-                const diaDaSemana = curr.getDay(); // 0 (Dom) a 6 (Sáb)
+                const diaDaSemana = curr.getDay();
                 const primeiroDiaDaSemana = new Date(curr);
                 primeiroDiaDaSemana.setDate(curr.getDate() - diaDaSemana);
 
@@ -730,7 +753,6 @@
                     `Semana: ${dInicio.getDate()}/${dInicio.getMonth()+1} até ${dFim.getDate()}/${dFim.getMonth()+1} (${dFim.getFullYear()})`;
             }
 
-            // RENDERIZAÇÃO NA GRADE
             diasParaExibir.forEach(dataObj => {
                 if (!dataObj) {
                     const emptyCell = document.createElement('div');
@@ -768,7 +790,10 @@
                         <div onclick="editarCarga('${c.id}')" class="p-2 mb-1.5 rounded-lg border ${badgeColor} cursor-pointer hover:shadow-md transition text-xs shadow-xs" title="${c.fornecedor} - Pedido ${c.numeroPedido}">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="font-bold text-slate-900">#${c.numeroPedido || 'S/N'}</span>
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${headerBadge}">${c.origem}</span>
+                                <div class="flex space-x-1">
+                                    <span class="text-[9px] font-bold px-1 py-0.5 rounded bg-slate-200 text-slate-800">${c.tipoFrete || 'FOB'}</span>
+                                    <span class="text-[9px] font-bold px-1 py-0.5 rounded ${headerBadge}">${c.origem}</span>
+                                </div>
                             </div>
                             <div class="font-bold truncate text-slate-800 leading-tight">${c.fornecedor}</div>
                             <div class="text-[10px] text-slate-600 truncate mt-1 flex items-center space-x-1">
@@ -812,6 +837,7 @@
             document.getElementById('modal-title').innerText = 'Nova Carga';
             document.getElementById('form-carga').reset();
             document.getElementById('carga-id').value = '';
+            document.getElementById('carga-tipo-frete').value = 'FOB';
             document.getElementById('btn-excluir-carga').classList.add('hidden');
             aoMudarOrigem();
             document.getElementById('modal-carga').classList.remove('hidden');
@@ -825,6 +851,7 @@
 
             document.getElementById('modal-title').innerText = 'Editar Carga';
             document.getElementById('carga-id').value = c.id;
+            document.getElementById('carga-tipo-frete').value = c.tipoFrete || 'FOB';
             document.getElementById('carga-origem').value = c.origem;
             document.getElementById('carga-ref-horas').value = c.refHoras || '48:00:00';
             document.getElementById('carga-pedido').value = c.numeroPedido || '';
@@ -859,6 +886,7 @@
 
             const nova = {
                 id: id || Date.now().toString(),
+                tipoFrete: document.getElementById('carga-tipo-frete').value || 'FOB',
                 origem: document.getElementById('carga-origem').value,
                 refHoras: document.getElementById('carga-ref-horas').value,
                 numeroPedido: document.getElementById('carga-pedido').value,

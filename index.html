@@ -108,11 +108,17 @@
                     <option value="CIF">CIF</option>
                 </select>
 
+                <!-- FILTRO DE ORIGEM COM TODOS OS ESTADOS DA LISTA -->
                 <select id="filter-origem" onchange="aplicarFiltros()" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer">
                     <option value="">Todas as Origens</option>
                     <option value="PR">PR - Paraná</option>
-                    <option value="MG">MG - Minas Gerais</option>
                     <option value="GO">GO - Goiás</option>
+                    <option value="TO">TO - Tocantins</option>
+                    <option value="MG">MG - Minas Gerais</option>
+                    <option value="SP">SP - São Paulo</option>
+                    <option value="SC">SC - Santa Catarina</option>
+                    <option value="MT">MT - Mato Grosso</option>
+                    <option value="BA">BA - Bahia</option>
                 </select>
 
                 <select id="filter-status" onchange="aplicarFiltros()" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer">
@@ -215,10 +221,16 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Origem (UF)</label>
+                        <!-- LISTA DE ESTADOS ATUALIZADA -->
                         <select id="carga-origem" required onchange="aoMudarOrigem()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
                             <option value="PR">PR - Paraná</option>
-                            <option value="MG">MG - Minas Gerais</option>
                             <option value="GO">GO - Goiás</option>
+                            <option value="TO">TO - Tocantins</option>
+                            <option value="MG">MG - Minas Gerais</option>
+                            <option value="SP">SP - São Paulo</option>
+                            <option value="SC">SC - Santa Catarina</option>
+                            <option value="MT">MT - Mato Grosso</option>
+                            <option value="BA">BA - Bahia</option>
                         </select>
                     </div>
                     <div>
@@ -504,8 +516,8 @@
         function aoMudarOrigem() {
             const uf = document.getElementById('carga-origem').value;
             const horasSelect = document.getElementById('carga-ref-horas');
-            if (uf === 'PR') horasSelect.value = '48:00:00';
-            else if (uf === 'MG' || uf === 'GO') horasSelect.value = '72:00:00';
+            if (uf === 'PR' || uf === 'SP' || uf === 'SC') horasSelect.value = '48:00:00';
+            else if (uf === 'MG' || uf === 'GO' || uf === 'TO' || uf === 'MT' || uf === 'BA') horasSelect.value = '72:00:00';
             calcularPrevisaoAutomaticamente();
         }
 

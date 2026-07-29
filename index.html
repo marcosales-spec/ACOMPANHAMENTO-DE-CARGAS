@@ -202,7 +202,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">SLA (Horas)</label>
-                        <input type="text" id="carga-ref-horas" placeholder="Ex: 48:00:00" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="text" id="carga-ref-horas" placeholder="Ex: 48:00:00" onkeyup="calcularPrevisaoAutomaticamente()" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                 </div>
 
@@ -270,7 +270,7 @@
     <script>
         const dadosIniciais = [
             { id: '1', origem: 'PR', dataColeta: '2026-06-01', horaColeta: '08:00', fimColeta: '2026-06-01', horaFimColeta: '12:00', carregado: true, fornecedor: 'FRIELLA', motorista: 'DIONEI', entrada: true, naPorta: false, prevChegada: '2026-06-04', refHoras: '72:00:00' },
-            { id: '2', origem: 'MG', dataColeta: '2026-07-29', horaColeta: '00:08', fimColeta: '2026-07-30', horaFimColeta: '23:22', carregado: true, fornecedor: 'BEM BRASIL', motorista: 'MARCO ANTONIO', entrada: false, naPorta: false, prevChegada: '2026-08-01', refHoras: '48:00:00' }
+            { id: '2', origem: 'MG', dataColeta: '2026-07-28', horaColeta: '09:16', fimColeta: '2026-07-28', horaFimColeta: '10:21', carregado: true, fornecedor: 'BEM BRASIL', motorista: 'MARCO ANTONIO', entrada: false, naPorta: false, prevChegada: '2026-07-30', refHoras: '48:00:00' }
         ];
 
         let cargas = [];
@@ -291,28 +291,39 @@
             localStorage.setItem('cargas_congeladas', JSON.stringify(cargas));
         }
 
+        // CÁLCULO BASEADO NA DATA E HORA DE FIM DA COLETA + SLA
         function calcularPrevisaoAutomaticamente() {
             const fimColeta = document.getElementById('carga-fim-coleta').value;
+            const horaFimColeta = document.getElementById('carga-hora-fim-coleta').value || '00:00';
             const refHoras = document.getElementById('carga-ref-horas').value;
 
             if (!fimColeta) return;
 
-            let horasAdicionais = 0;
+            let horasSLA = 0;
+            let minutosSLA = 0;
+
             if (refHoras) {
                 const partes = refHoras.split(':');
-                horasAdicionais = parseInt(partes[0], 10) || 0;
+                horasSLA = parseInt(partes[0], 10) || 0;
+                minutosSLA = parseInt(partes[1], 10) || 0;
             }
 
-            if (horasAdicionais <= 0) horasAdicionais = 24;
+            // Pega a data e hora do fim da coleta
+            const [ano, mes, dia] = fimColeta.split('-').map(Number);
+            const [hora, minuto] = horaFimColeta.split(':').map(Number);
 
-            const dataFim = new Date(fimColeta + 'T00:00:00');
-            dataFim.setHours(dataFim.getHours() + horasAdicionais);
+            const dataCalculada = new Date(ano, mes - 1, dia, hora, minuto);
 
-            const ano = dataFim.getFullYear();
-            const mes = String(dataFim.getMonth() + 1).padStart(2, '0');
-            const dia = String(dataFim.getDate()).padStart(2, '0');
+            // Soma SLA (Horas e Minutos)
+            dataCalculada.setHours(dataCalculada.getHours() + horasSLA);
+            dataCalculada.setMinutes(dataCalculada.getMinutes() + minutosSLA);
 
-            document.getElementById('carga-prev-chegada').value = `${ano}-${mes}-${dia}`;
+            // Formata a nova data de previsão para o campo AAAA-MM-DD
+            const anoResult = dataCalculada.getFullYear();
+            const mesResult = String(dataCalculada.getMonth() + 1).padStart(2, '0');
+            const diaResult = String(dataCalculada.getDate()).padStart(2, '0');
+
+            document.getElementById('carga-prev-chegada').value = `${anoResult}-${mesResult}-${diaResult}`;
         }
 
         function alternarVisao(visao) {
@@ -588,6 +599,9 @@
             document.getElementById('carga-carregado').checked = c.carregado;
 
             document.getElementById('modal-carga').classList.remove('hidden');
+            
+            // Recalcula para garantir consistência visual
+            calcularPrevisaoAutomaticamente();
         }
 
         function salvarCarga(e) {

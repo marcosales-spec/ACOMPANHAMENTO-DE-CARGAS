@@ -142,17 +142,29 @@
             </div>
         </section>
 
-        <!-- VISÃO 2: CALENDÁRIO VISUAL MENSAL -->
+        <!-- VISÃO 2: CALENDÁRIO VISUAL -->
         <section id="view-calendar" class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hidden">
-            <!-- NAVEGAÇÃO DO CALENDÁRIO -->
-            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+            <!-- NAVEGAÇÃO E OPÇÕES DO CALENDÁRIO -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-3 border-b border-slate-200 gap-3">
                 <div class="flex items-center space-x-3">
                     <h2 id="calendar-month-year" class="text-lg font-bold text-slate-800 capitalize"></h2>
                     <div class="flex space-x-1">
-                        <button onclick="mudarMesCalendario(-1)" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition">◄ Mês Ant.</button>
-                        <button onclick="mudarMesCalendario(1)" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition">Próx. Mês ►</button>
+                        <button onclick="mudarPeriodoCalendario(-1)" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition">◄ Anter.</button>
+                        <button onclick="mudarPeriodoCalendario(1)" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition">Próx. ►</button>
                     </div>
                 </div>
+
+                <!-- FILTRO DE MÊS OU SEMANAS ESPECÍFICAS -->
+                <div class="flex items-center space-x-2">
+                    <label class="text-xs font-semibold text-slate-600">Visualizar:</label>
+                    <select id="filter-calendar-view" onchange="alterarModoVisualizacaoCalendario(this.value)" class="py-1.5 px-3 text-xs bg-slate-50 border border-slate-300 rounded-lg font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="mes">📅 Mês Completo</option>
+                        <option value="semana_atual">📍 Semana Atual</option>
+                        <option value="proxima_semana">⏩ Próxima Semana</option>
+                        <option value="semana_anterior">⏪ Semana Passada</option>
+                    </select>
+                </div>
+
                 <div class="flex items-center space-x-4 text-xs font-semibold">
                     <div class="flex items-center space-x-1"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> <span>Em Trânsito</span></div>
                     <div class="flex items-center space-x-1"><span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span> <span>Na Porta</span></div>
@@ -265,6 +277,7 @@
     <script>
         let cargas = [];
         let modoVisao = 'tabela'; // 'tabela' ou 'calendario'
+        let modoFiltroCalendario = 'mes'; // 'mes', 'semana_atual', 'proxima_semana', 'semana_anterior'
         let dataCalendarioAtual = new Date();
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -300,8 +313,24 @@
             renderizar();
         }
 
-        function mudarMesCalendario(delta) {
-            dataCalendarioAtual.setMonth(dataCalendarioAtual.getMonth() + delta);
+        function alterarModoVisualizacaoCalendario(modo) {
+            modoFiltroCalendario = modo;
+            dataCalendarioAtual = new Date(); // Reseta para hoje para navegação precisa
+            if (modo === 'proxima_semana') {
+                dataCalendarioAtual.setDate(dataCalendarioAtual.getDate() + 7);
+            } else if (modo === 'semana_anterior') {
+                dataCalendarioAtual.setDate(dataCalendarioAtual.getDate() - 7);
+            }
+            renderizarCalendario();
+        }
+
+        function mudarPeriodoCalendario(delta) {
+            if (modoFiltroCalendario === 'mes') {
+                dataCalendarioAtual.setMonth(dataCalendarioAtual.getMonth() + delta);
+            } else {
+                // Avança ou recua 7 dias (uma semana)
+                dataCalendarioAtual.setDate(dataCalendarioAtual.getDate() + (delta * 7));
+            }
             renderizarCalendario();
         }
 
@@ -352,6 +381,7 @@
 
                         if (!carga) {
                             const fornecedorPlanilha = extrairValorColuna(row, ['fornecedor', 'fornec', 'cliente', 'empresa']) || 'A PREENCHER';
+                            const motoristaPlanilha = extrairValorColuna(row, ['motorista', 'mot', 'condutor', 'transporte']) || 'A PREENCHER';
 
                             carga = {
                                 id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
@@ -359,7 +389,7 @@
                                 refHoras: '48:00:00',
                                 numeroPedido: pedido,
                                 fornecedor: fornecedorPlanilha,
-                                motorista: 'A PREENCHER',
+                                motorista: motoristaPlanilha,
                                 dataColeta: '',
                                 horaColeta: '',
                                 fimColeta: '',
@@ -639,61 +669,109 @@
             const grid = document.getElementById('calendar-grid');
             grid.innerHTML = '';
 
-            const ano = dataCalendarioAtual.getFullYear();
-            const mes = dataCalendarioAtual.getMonth();
-
-            const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-            document.getElementById('calendar-month-year').innerText = `${nomesMeses[mes]} de ${ano}`;
-
-            const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
-            const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
-
             const filtradas = obterCargasFiltradas();
+            const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
-            // Espaços em branco para os dias antes do início do mês
-            for (let i = 0; i < primeiroDiaSemana; i++) {
-                const emptyCell = document.createElement('div');
-                emptyCell.className = "bg-slate-50 border border-slate-100 rounded-lg min-h-[100px]";
-                grid.appendChild(emptyCell);
+            let diasParaExibir = [];
+
+            if (modoFiltroCalendario === 'mes') {
+                const ano = dataCalendarioAtual.getFullYear();
+                const mes = dataCalendarioAtual.getMonth();
+                document.getElementById('calendar-month-year').innerText = `${nomesMeses[mes]} de ${ano}`;
+
+                const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+                const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
+
+                // Espaços vazios do início do mês
+                for (let i = 0; i < primeiroDiaSemana; i++) {
+                    diasParaExibir.push(null);
+                }
+
+                for (let d = 1; d <= totalDiasMes; d++) {
+                    const dt = new Date(ano, mes, d);
+                    diasParaExibir.push(dt);
+                }
+            } else {
+                // MODO SEMANAL (Semana Atual, Próxima ou Passada)
+                const curr = new Date(dataCalendarioAtual);
+                const diaDaSemana = curr.getDay(); // 0 (Dom) a 6 (Sáb)
+                const primeiroDiaDaSemana = new Date(curr);
+                primeiroDiaDaSemana.setDate(curr.getDate() - diaDaSemana);
+
+                for (let i = 0; i < 7; i++) {
+                    const dt = new Date(primeiroDiaDaSemana);
+                    dt.setDate(primeiroDiaDaSemana.getDate() + i);
+                    diasParaExibir.push(dt);
+                }
+
+                const dInicio = diasParaExibir[0];
+                const dFim = diasParaExibir[6];
+                document.getElementById('calendar-month-year').innerText = 
+                    `Semana: ${dInicio.getDate()}/${dInicio.getMonth()+1} até ${dFim.getDate()}/${dFim.getMonth()+1} (${dFim.getFullYear()})`;
             }
 
-            // Renderizar cada dia do mês
-            for (let dia = 1; dia <= totalDiasMes; dia++) {
-                const dataStringIso = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-                
-                // Encontrar cargas com esta previsão de chegada
+            // RENDERIZAÇÃO NA GRADE
+            diasParaExibir.forEach(dataObj => {
+                if (!dataObj) {
+                    const emptyCell = document.createElement('div');
+                    emptyCell.className = "bg-slate-50 border border-slate-100 rounded-lg min-h-[120px]";
+                    grid.appendChild(emptyCell);
+                    return;
+                }
+
+                const anoStr = dataObj.getFullYear();
+                const mesStr = String(dataObj.getMonth() + 1).padStart(2, '0');
+                const diaStr = String(dataObj.getDate()).padStart(2, '0');
+                const dataStringIso = `${anoStr}-${mesStr}-${diaStr}`;
+
                 const cargasDoDia = filtradas.filter(c => c.prevChegada === dataStringIso);
 
                 const cell = document.createElement('div');
-                cell.className = "bg-white border border-slate-200 rounded-lg min-h-[110px] p-2 flex flex-col justify-between shadow-xs hover:border-blue-300 transition";
+                cell.className = "bg-white border border-slate-200 rounded-lg min-h-[120px] p-2 flex flex-col justify-between shadow-xs hover:border-blue-300 transition";
 
                 let htmlCargas = cargasDoDia.map(c => {
-                    let badgeColor = 'bg-amber-100 text-amber-800 border-amber-300';
-                    if (c.descarregada === 'SIM') badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-                    else if (c.naPorta) badgeColor = 'bg-indigo-100 text-indigo-800 border-indigo-300';
+                    let badgeColor = 'bg-emerald-50 text-emerald-900 border-emerald-300';
+                    let headerBadge = 'text-emerald-700 bg-emerald-100';
+
+                    if (c.descarregada === 'SIM') {
+                        badgeColor = 'bg-emerald-100 text-emerald-900 border-emerald-400';
+                        headerBadge = 'text-emerald-800 bg-emerald-200';
+                    } else if (c.naPorta) {
+                        badgeColor = 'bg-indigo-50 text-indigo-900 border-indigo-300';
+                        headerBadge = 'text-indigo-700 bg-indigo-100';
+                    } else {
+                        badgeColor = 'bg-amber-50 text-amber-900 border-amber-300';
+                        headerBadge = 'text-amber-800 bg-amber-100';
+                    }
 
                     return `
-                        <div onclick="editarCarga('${c.id}')" class="p-1.5 mb-1 rounded text-[11px] border ${badgeColor} cursor-pointer hover:opacity-80 transition font-semibold truncate shadow-xs" title="${c.fornecedor} - Pedido ${c.numeroPedido}">
-                            <div class="flex justify-between items-center">
-                                <span class="font-bold">#${c.numeroPedido || 'S/N'}</span>
-                                <span class="text-[9px] px-1 bg-white/60 rounded">${c.origem}</span>
+                        <div onclick="editarCarga('${c.id}')" class="p-2 mb-1.5 rounded-lg border ${badgeColor} cursor-pointer hover:shadow-md transition text-xs shadow-xs" title="${c.fornecedor} - Pedido ${c.numeroPedido}">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-slate-900">#${c.numeroPedido || 'S/N'}</span>
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${headerBadge}">${c.origem}</span>
                             </div>
-                            <div class="truncate text-[10px]">${c.fornecedor}</div>
+                            <div class="font-bold truncate text-slate-800 leading-tight">${c.fornecedor}</div>
+                            <div class="text-[10px] text-slate-600 truncate mt-1 flex items-center space-x-1">
+                                <span>👤</span>
+                                <span>${c.motorista || 'Sem Motorista'}</span>
+                            </div>
                         </div>
                     `;
                 }).join('');
 
+                const ehHoje = new Date().toDateString() === dataObj.toDateString();
+
                 cell.innerHTML = `
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs font-bold text-slate-700">${dia}</span>
-                        ${cargasDoDia.length > 0 ? `<span class="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">${cargasDoDia.length}</span>` : ''}
+                    <div class="flex items-center justify-between mb-1.5 pb-1 border-b border-slate-100">
+                        <span class="text-xs font-bold ${ehHoje ? 'bg-blue-600 text-white px-2 py-0.5 rounded-full' : 'text-slate-700'}">${dataObj.getDate()}</span>
+                        ${cargasDoDia.length > 0 ? `<span class="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-full">${cargasDoDia.length} ${cargasDoDia.length === 1 ? 'carga' : 'cargas'}</span>` : ''}
                     </div>
-                    <div class="flex-1 overflow-y-auto custom-scrollbar max-h-[90px]">
+                    <div class="flex-1 overflow-y-auto custom-scrollbar max-h-[140px] space-y-1">
                         ${htmlCargas}
                     </div>
                 `;
                 grid.appendChild(cell);
-            }
+            });
         }
 
         function toggleStatus(id, campo) {

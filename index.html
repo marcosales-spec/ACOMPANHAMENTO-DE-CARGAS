@@ -194,7 +194,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Origem (UF)</label>
-                        <select id="carga-origem" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <select id="carga-origem" required onchange="aoMudarOrigem()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
                             <option value="PR">PR - Paraná</option>
                             <option value="MG">MG - Minas Gerais</option>
                             <option value="GO">GO - Goiás</option>
@@ -202,7 +202,13 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">SLA (Horas)</label>
-                        <input type="text" id="carga-ref-horas" placeholder="Ex: 48:00:00" onkeyup="calcularPrevisaoAutomaticamente()" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <select id="carga-ref-horas" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
+                            <option value="48:00:00">48:00:00 (48 horas)</option>
+                            <option value="72:00:00">72:00:00 (72 horas)</option>
+                            <option value="24:00:00">24:00:00 (24 horas)</option>
+                            <option value="96:00:00">96:00:00 (96 horas)</option>
+                            <option value="120:00:00">120:00:00 (120 horas)</option>
+                        </select>
                     </div>
                 </div>
 
@@ -291,6 +297,20 @@
             localStorage.setItem('cargas_congeladas', JSON.stringify(cargas));
         }
 
+        // Sugere SLA automático baseado na UF
+        function aoMudarOrigem() {
+            const uf = document.getElementById('carga-origem').value;
+            const slaSelect = document.getElementById('carga-ref-horas');
+            
+            if (uf === 'PR') {
+                slaSelect.value = '48:00:00';
+            } else if (uf === 'MG' || uf === 'GO') {
+                slaSelect.value = '72:00:00';
+            }
+            
+            calcularPrevisaoAutomaticamente();
+        }
+
         // CÁLCULO BASEADO NA DATA E HORA DE FIM DA COLETA + SLA
         function calcularPrevisaoAutomaticamente() {
             const fimColeta = document.getElementById('carga-fim-coleta').value;
@@ -308,17 +328,15 @@
                 minutosSLA = parseInt(partes[1], 10) || 0;
             }
 
-            // Pega a data e hora do fim da coleta
             const [ano, mes, dia] = fimColeta.split('-').map(Number);
             const [hora, minuto] = horaFimColeta.split(':').map(Number);
 
             const dataCalculada = new Date(ano, mes - 1, dia, hora, minuto);
 
-            // Soma SLA (Horas e Minutos)
+            // Soma SLA
             dataCalculada.setHours(dataCalculada.getHours() + horasSLA);
             dataCalculada.setMinutes(dataCalculada.getMinutes() + minutosSLA);
 
-            // Formata a nova data de previsão para o campo AAAA-MM-DD
             const anoResult = dataCalculada.getFullYear();
             const mesResult = String(dataCalculada.getMonth() + 1).padStart(2, '0');
             const diaResult = String(dataCalculada.getDate()).padStart(2, '0');
@@ -416,7 +434,7 @@
                         <td class="py-3 px-4 text-slate-500">${formatarData(c.fimColeta)}</td>
                         <td class="py-3 px-4 text-slate-500">${c.horaFimColeta || '-'}</td>
                         <td class="py-3 px-4 text-blue-700 font-bold bg-blue-50/50">${formatarData(c.prevChegada)}</td>
-                        <td class="py-3 px-4 text-slate-500">${c.refHoras}</td>
+                        <td class="py-3 px-4 text-slate-500 font-medium">${c.refHoras}</td>
                         <td class="py-3 px-4 text-center">
                             <button type="button" onclick="toggleStatus('${c.id}', 'entrada')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.entrada ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.entrada ? 'SIM' : 'NÃO'}</button>
                         </td>
@@ -572,6 +590,10 @@
             document.getElementById('modal-title').innerText = 'Nova Carga';
             document.getElementById('form-carga').reset();
             document.getElementById('carga-id').value = '';
+            
+            // Pré-seleciona SLA relativo à origem inicial
+            aoMudarOrigem();
+            
             document.getElementById('modal-carga').classList.remove('hidden');
         }
 
@@ -586,7 +608,7 @@
             document.getElementById('modal-title').innerText = 'Editar Carga';
             document.getElementById('carga-id').value = c.id;
             document.getElementById('carga-origem').value = c.origem;
-            document.getElementById('carga-ref-horas').value = c.refHoras;
+            document.getElementById('carga-ref-horas').value = c.refHoras || '48:00:00';
             document.getElementById('carga-fornecedor').value = c.fornecedor;
             document.getElementById('carga-motorista').value = c.motorista;
             document.getElementById('carga-data-coleta').value = c.dataColeta || '';
@@ -600,7 +622,6 @@
 
             document.getElementById('modal-carga').classList.remove('hidden');
             
-            // Recalcula para garantir consistência visual
             calcularPrevisaoAutomaticamente();
         }
 

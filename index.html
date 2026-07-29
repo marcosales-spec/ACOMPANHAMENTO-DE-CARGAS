@@ -111,6 +111,7 @@
                             <th class="py-3 px-4">Hora Coleta</th>
                             <th class="py-3 px-4">Fim Coleta</th>
                             <th class="py-3 px-4">Hora Fim</th>
+                            <th class="py-3 px-4 font-semibold text-indigo-600">Tempo Coleta</th>
                             <th class="py-3 px-4 font-semibold text-blue-600">Prev. Chegada</th>
                             <th class="py-3 px-4">SLA (Horas)</th>
                             <th class="py-3 px-4 text-center">Entrada</th>
@@ -225,11 +226,11 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Data da Coleta</label>
-                        <input type="date" id="carga-data-coleta" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="date" id="carga-data-coleta" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Hora da Coleta</label>
-                        <input type="time" id="carga-hora-coleta" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="time" id="carga-hora-coleta" onchange="calcularPrevisaoAutomaticamente()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                 </div>
 
@@ -244,9 +245,16 @@
                     </div>
                 </div>
 
-                <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <label class="block text-xs font-bold text-blue-900 mb-1">Previsão de Chegada (Calculada)</label>
-                    <input type="date" id="carga-prev-chegada" required class="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm font-semibold text-blue-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <!-- CÁLCULOS AUTOMÁTICOS (PAINEL AZUL) -->
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-blue-900 mb-1">Tempo de Coleta</label>
+                        <input type="text" id="carga-tempo-coleta" readonly placeholder="--:--" class="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm font-semibold text-indigo-900 bg-white/80 focus:outline-none cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-blue-900 mb-1">Prev. Chegada</label>
+                        <input type="date" id="carga-prev-chegada" required class="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm font-semibold text-blue-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
                 </div>
 
                 <div class="pt-2 border-t border-slate-100 grid grid-cols-3 gap-2">
@@ -275,7 +283,7 @@
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
         const dadosIniciais = [
-            { id: '1', origem: 'PR', dataColeta: '2026-06-01', horaColeta: '08:00', fimColeta: '2026-06-01', horaFimColeta: '12:00', carregado: true, fornecedor: 'FRIELLA', motorista: 'DIONEI', entrada: true, naPorta: false, prevChegada: '2026-06-04', refHoras: '72:00:00' },
+            { id: '1', origem: 'PR', dataColeta: '2026-07-29', horaColeta: '05:33', fimColeta: '2026-07-30', horaFimColeta: '04:33', carregado: false, fornecedor: 'FRIELLA', motorista: 'MAURICIO', entrada: false, naPorta: false, prevChegada: '2026-08-02', refHoras: '72:00:00' },
             { id: '2', origem: 'MG', dataColeta: '2026-07-28', horaColeta: '09:16', fimColeta: '2026-07-28', horaFimColeta: '10:21', carregado: true, fornecedor: 'BEM BRASIL', motorista: 'MARCO ANTONIO', entrada: false, naPorta: false, prevChegada: '2026-07-30', refHoras: '48:00:00' }
         ];
 
@@ -311,12 +319,39 @@
             calcularPrevisaoAutomaticamente();
         }
 
-        // CÁLCULO BASEADO NA DATA E HORA DE FIM DA COLETA + SLA
+        // CÁLCULO DE TEMPO DE COLETA E PREVISÃO DE CHEGADA
         function calcularPrevisaoAutomaticamente() {
+            const dataColeta = document.getElementById('carga-data-coleta').value;
+            const horaColeta = document.getElementById('carga-hora-coleta').value || '00:00';
+
             const fimColeta = document.getElementById('carga-fim-coleta').value;
             const horaFimColeta = document.getElementById('carga-hora-fim-coleta').value || '00:00';
             const refHoras = document.getElementById('carga-ref-horas').value;
 
+            // 1. CÁLCULO DO TEMPO DE COLETA (Diferença entre Data/Hora Coleta e Data/Hora Fim)
+            if (dataColeta && fimColeta) {
+                const [a1, m1, d1] = dataColeta.split('-').map(Number);
+                const [h1, min1] = horaColeta.split(':').map(Number);
+                const dtInicio = new Date(a1, m1 - 1, d1, h1, min1);
+
+                const [a2, m2, d2] = fimColeta.split('-').map(Number);
+                const [h2, min2] = horaFimColeta.split(':').map(Number);
+                const dtFim = new Date(a2, m2 - 1, d2, h2, min2);
+
+                const diffMs = dtFim - dtInicio;
+                if (diffMs >= 0) {
+                    const diffMinutosTotal = Math.floor(diffMs / (1000 * 60));
+                    const horas = Math.floor(diffMinutosTotal / 60);
+                    const minutos = diffMinutosTotal % 60;
+                    document.getElementById('carga-tempo-coleta').value = `${horas}h ${String(minutos).padStart(2, '0')}min`;
+                } else {
+                    document.getElementById('carga-tempo-coleta').value = 'Inválido';
+                }
+            } else {
+                document.getElementById('carga-tempo-coleta').value = '--:--';
+            }
+
+            // 2. CÁLCULO DA PREVISÃO DE CHEGADA (Fim Coleta + SLA)
             if (!fimColeta) return;
 
             let horasSLA = 0;
@@ -342,6 +377,29 @@
             const diaResult = String(dataCalculada.getDate()).padStart(2, '0');
 
             document.getElementById('carga-prev-chegada').value = `${anoResult}-${mesResult}-${diaResult}`;
+        }
+
+        function calcularTempoColetaTexto(dataColeta, horaColeta, fimColeta, horaFimColeta) {
+            if (!dataColeta || !fimColeta) return '-';
+            try {
+                const [a1, m1, d1] = dataColeta.split('-').map(Number);
+                const [h1, min1] = (horaColeta || '00:00').split(':').map(Number);
+                const dtInicio = new Date(a1, m1 - 1, d1, h1, min1);
+
+                const [a2, m2, d2] = fimColeta.split('-').map(Number);
+                const [h2, min2] = (horaFimColeta || '00:00').split(':').map(Number);
+                const dtFim = new Date(a2, m2 - 1, d2, h2, min2);
+
+                const diffMs = dtFim - dtInicio;
+                if (diffMs < 0) return '-';
+
+                const diffMinutosTotal = Math.floor(diffMs / (1000 * 60));
+                const horas = Math.floor(diffMinutosTotal / 60);
+                const minutos = diffMinutosTotal % 60;
+                return `${horas}h ${String(minutos).padStart(2, '0')}m`;
+            } catch (e) {
+                return '-';
+            }
         }
 
         function alternarVisao(visao) {
@@ -421,6 +479,8 @@
             } else {
                 emptyState.classList.add('hidden');
                 filtradas.forEach(c => {
+                    const tempoColetaStr = calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta);
+
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
                     tr.innerHTML = `
@@ -433,6 +493,7 @@
                         <td class="py-3 px-4 text-slate-600 font-medium">${c.horaColeta || '-'}</td>
                         <td class="py-3 px-4 text-slate-500">${formatarData(c.fimColeta)}</td>
                         <td class="py-3 px-4 text-slate-500">${c.horaFimColeta || '-'}</td>
+                        <td class="py-3 px-4 text-indigo-700 font-bold bg-indigo-50/50">${tempoColetaStr}</td>
                         <td class="py-3 px-4 text-blue-700 font-bold bg-blue-50/50">${formatarData(c.prevChegada)}</td>
                         <td class="py-3 px-4 text-slate-500 font-medium">${c.refHoras}</td>
                         <td class="py-3 px-4 text-center">
@@ -469,6 +530,8 @@
             let cCaminho = 0, cPorta = 0, cCarregado = 0;
 
             lista.forEach(c => {
+                const tempoColetaStr = calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta);
+
                 const card = document.createElement('div');
                 card.className = 'bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3';
                 card.innerHTML = `
@@ -479,7 +542,7 @@
                     <div>
                         <h4 class="font-bold text-slate-900 text-sm">${c.fornecedor}</h4>
                         <p class="text-xs text-slate-500 mt-0.5">Motorista: ${c.motorista}</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Fim Coleta: ${formatarData(c.fimColeta)} às ${c.horaFimColeta || '--:--'}</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Tempo Coleta: <strong class="text-indigo-600">${tempoColetaStr}</strong></p>
                     </div>
                     <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                         <span class="text-slate-400">SLA: ${c.refHoras}</span>
@@ -666,9 +729,10 @@
         }
 
         function exportarCSV() {
-            let csv = 'Origem;Fornecedor;Motorista;Data Coleta;Hora Coleta;Fim Coleta;Hora Fim;Prev Chegada;Ref Horas;Entrada;Na Porta;Carregado\n';
+            let csv = 'Origem;Fornecedor;Motorista;Data Coleta;Hora Coleta;Fim Coleta;Hora Fim;Tempo Coleta;Prev Chegada;Ref Horas;Entrada;Na Porta;Carregado\n';
             cargas.forEach(c => {
-                csv += `${c.origem};${c.fornecedor};${c.motorista};${c.dataColeta || ''};${c.horaColeta || ''};${c.fimColeta};${c.horaFimColeta || ''};${c.prevChegada};${c.refHoras};${c.entrada ? 'SIM' : 'NÃO'};${c.naPorta ? 'SIM' : 'NÃO'};${c.carregado ? 'SIM' : 'NÃO'}\n`;
+                const tempoStr = calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta);
+                csv += `${c.origem};${c.fornecedor};${c.motorista};${c.dataColeta || ''};${c.horaColeta || ''};${c.fimColeta};${c.horaFimColeta || ''};${tempoStr};${c.prevChegada};${c.refHoras};${c.entrada ? 'SIM' : 'NÃO'};${c.naPorta ? 'SIM' : 'NÃO'};${c.carregado ? 'SIM' : 'NÃO'}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

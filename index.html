@@ -43,30 +43,30 @@
     <!-- CONTAINER PRINCIPAL -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        <!-- DASHBOARD -->
+        <!-- DASHBOARD (CARDS RENOMEADOS) -->
         <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
                 <div>
-                    <p class="text-xs font-medium text-slate-500 uppercase">Total Ativas</p>
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">TOTAL ATIVAS</p>
                     <p id="stat-total" class="text-2xl font-bold text-slate-900">0</p>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
                 <div>
-                    <p class="text-xs font-medium text-slate-500 uppercase">A Caminho</p>
-                    <p id="stat-caminho" class="text-2xl font-bold text-amber-600">0</p>
+                    <p class="text-xs font-bold text-amber-600 uppercase tracking-wider">EM TRÂNSITO</p>
+                    <p id="stat-transito" class="text-2xl font-bold text-amber-600">0</p>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
                 <div>
-                    <p class="text-xs font-medium text-slate-500 uppercase">Na Portaria / Porta</p>
+                    <p class="text-xs font-bold text-indigo-600 uppercase tracking-wider">NA PORTA</p>
                     <p id="stat-porta" class="text-2xl font-bold text-indigo-600">0</p>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
                 <div>
-                    <p class="text-xs font-medium text-slate-500 uppercase">Carregadas / Final</p>
-                    <p id="stat-carregadas" class="text-2xl font-bold text-emerald-600">0</p>
+                    <p class="text-xs font-bold text-emerald-600 uppercase tracking-wider">DESCARREGADAS</p>
+                    <p id="stat-descarregadas" class="text-2xl font-bold text-emerald-600">0</p>
                 </div>
             </div>
         </section>
@@ -85,9 +85,9 @@
 
                 <select id="filter-status" onchange="aplicarFiltros()" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer">
                     <option value="">Todos os Status</option>
-                    <option value="caminho">A Caminho</option>
-                    <option value="porta">Na Porta / Portaria</option>
-                    <option value="carregado">Carregado / Finalizado</option>
+                    <option value="transito">Em Trânsito</option>
+                    <option value="porta">Na Porta</option>
+                    <option value="descarregada">Descarregada</option>
                 </select>
             </div>
 
@@ -133,15 +133,15 @@
         <section id="view-kanban" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col min-h-[500px]">
                 <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
-                    <h3 class="font-bold text-slate-700 text-sm uppercase">A Caminho</h3>
-                    <span id="badge-kanban-caminho" class="px-2 py-0.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-full">0</span>
+                    <h3 class="font-bold text-slate-700 text-sm uppercase">Em Trânsito</h3>
+                    <span id="badge-kanban-transito" class="px-2 py-0.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-full">0</span>
                 </div>
-                <div id="kanban-caminho" class="space-y-3 flex-1 overflow-y-auto"></div>
+                <div id="kanban-transito" class="space-y-3 flex-1 overflow-y-auto"></div>
             </div>
 
             <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col min-h-[500px]">
                 <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
-                    <h3 class="font-bold text-slate-700 text-sm uppercase">Na Portaria / Porta</h3>
+                    <h3 class="font-bold text-slate-700 text-sm uppercase">Na Porta</h3>
                     <span id="badge-kanban-porta" class="px-2 py-0.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-full">0</span>
                 </div>
                 <div id="kanban-porta" class="space-y-3 flex-1 overflow-y-auto"></div>
@@ -149,10 +149,10 @@
 
             <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col min-h-[500px]">
                 <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
-                    <h3 class="font-bold text-slate-700 text-sm uppercase">Carregado / Finalizado</h3>
-                    <span id="badge-kanban-carregado" class="px-2 py-0.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-full">0</span>
+                    <h3 class="font-bold text-slate-700 text-sm uppercase">Descarregadas</h3>
+                    <span id="badge-kanban-descarregada" class="px-2 py-0.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-full">0</span>
                 </div>
-                <div id="kanban-carregado" class="space-y-3 flex-1 overflow-y-auto"></div>
+                <div id="kanban-descarregada" class="space-y-3 flex-1 overflow-y-auto"></div>
             </div>
         </section>
 
@@ -270,7 +270,7 @@
     <script>
         const dadosIniciais = [
             { id: '1', origem: 'PR', dataColeta: '2026-07-29', horaColeta: '05:33', fimColeta: '2026-07-30', horaFimColeta: '04:33', carregado: false, fornecedor: 'FRIELLA', motorista: 'MAURICIO', entrada: false, naPorta: false, descarregada: 'NÃO', prevChegada: '2026-08-02', refHoras: '72:00:00' },
-            { id: '2', origem: 'MG', dataColeta: '2026-07-28', horaColeta: '09:16', fimColeta: '2026-07-28', horaFimColeta: '10:21', carregado: true, fornecedor: 'BEM BRASIL', motorista: 'MARCO ANTONIO', entrada: false, naPorta: false, descarregada: 'NÃO', prevChegada: '2026-07-30', refHoras: '48:00:00' }
+            { id: '2', origem: 'MG', dataColeta: '2026-07-28', horaColeta: '09:16', fimColeta: '2026-07-28', horaFimColeta: '10:21', carregado: true, fornecedor: 'BEM BRASIL', motorista: 'MARCO ANTONIO', entrada: false, naPorta: false, descarregada: 'SIM', prevChegada: '2026-07-30', refHoras: '48:00:00' }
         ];
 
         let cargas = [];
@@ -312,7 +312,6 @@
             const horaFimColeta = document.getElementById('carga-hora-fim-coleta').value || '00:00';
             const refHoras = document.getElementById('carga-ref-horas').value;
 
-            // 1. CÁLCULO DO TEMPO DE COLETA
             if (dataColeta && fimColeta) {
                 const [a1, m1, d1] = dataColeta.split('-').map(Number);
                 const [h1, min1] = horaColeta.split(':').map(Number);
@@ -335,7 +334,6 @@
                 document.getElementById('carga-tempo-coleta').value = '--:--';
             }
 
-            // 2. CÁLCULO DA PREVISÃO DE CHEGADA
             if (!fimColeta) return;
 
             let horasAdicionais = 0;
@@ -435,8 +433,8 @@
                 const matchBusca = (c.fornecedor || '').toLowerCase().includes(busca) || (c.motorista || '').toLowerCase().includes(busca);
                 const matchOrigem = !origem || c.origem === origem;
                 
-                let statusCarga = 'caminho';
-                if (c.carregado) statusCarga = 'carregado';
+                let statusCarga = 'transito';
+                if (c.descarregada === 'SIM') statusCarga = 'descarregada';
                 else if (c.naPorta) statusCarga = 'porta';
 
                 const matchStatus = !status || statusCarga === status;
@@ -448,10 +446,11 @@
         function renderizar() {
             const filtradas = obterCargasFiltradas();
             
+            // ATUALIZAÇÃO DOS ESTATÍSTICAS / METRICAS
             document.getElementById('stat-total').innerText = cargas.length;
-            document.getElementById('stat-caminho').innerText = cargas.filter(c => !c.carregado && !c.naPorta).length;
-            document.getElementById('stat-porta').innerText = cargas.filter(c => !c.carregado && c.naPorta).length;
-            document.getElementById('stat-carregadas').innerText = cargas.filter(c => c.carregado).length;
+            document.getElementById('stat-transito').innerText = cargas.filter(c => c.descarregada !== 'SIM' && !c.naPorta).length;
+            document.getElementById('stat-porta').innerText = cargas.filter(c => c.descarregada !== 'SIM' && c.naPorta).length;
+            document.getElementById('stat-descarregadas').innerText = cargas.filter(c => c.descarregada === 'SIM').length;
 
             const tbody = document.getElementById('table-body');
             const emptyState = document.getElementById('empty-state');
@@ -465,7 +464,6 @@
                     const tempoColetaStr = calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta);
                     const statusDescarregada = c.descarregada || 'NÃO';
 
-                    // Estilos da badge DESCARREGADA
                     let badgeDescarregadaClass = 'bg-rose-100 text-rose-700';
                     if (statusDescarregada === 'PARCIAL') {
                         badgeDescarregadaClass = 'bg-amber-100 text-amber-700';
@@ -514,15 +512,15 @@
         }
 
         function renderKanban(lista) {
-            const kCaminho = document.getElementById('kanban-caminho');
+            const kTransito = document.getElementById('kanban-transito');
             const kPorta = document.getElementById('kanban-porta');
-            const kCarregado = document.getElementById('kanban-carregado');
+            const kDescarregada = document.getElementById('kanban-descarregada');
 
-            kCaminho.innerHTML = '';
+            kTransito.innerHTML = '';
             kPorta.innerHTML = '';
-            kCarregado.innerHTML = '';
+            kDescarregada.innerHTML = '';
 
-            let cCaminho = 0, cPorta = 0, cCarregado = 0;
+            let cTransito = 0, cPorta = 0, cDescarregada = 0;
 
             lista.forEach(c => {
                 const tempoColetaStr = calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta);
@@ -545,21 +543,21 @@
                     </div>
                 `;
 
-                if (c.carregado) {
-                    kCarregado.appendChild(card);
-                    cCarregado++;
+                if (c.descarregada === 'SIM') {
+                    kDescarregada.appendChild(card);
+                    cDescarregada++;
                 } else if (c.naPorta) {
                     kPorta.appendChild(card);
                     cPorta++;
                 } else {
-                    kCaminho.appendChild(card);
-                    cCaminho++;
+                    kTransito.appendChild(card);
+                    cTransito++;
                 }
             });
 
-            document.getElementById('badge-kanban-caminho').innerText = cCaminho;
+            document.getElementById('badge-kanban-transito').innerText = cTransito;
             document.getElementById('badge-kanban-porta').innerText = cPorta;
-            document.getElementById('badge-kanban-carregado').innerText = cCarregado;
+            document.getElementById('badge-kanban-descarregada').innerText = cDescarregada;
         }
 
         function renderizarCalendario() {
@@ -600,7 +598,7 @@
                 let htmlCargas = '';
                 cargasNoDia.forEach(c => {
                     let corStatus = 'bg-amber-100 text-amber-800 border-amber-300';
-                    if (c.carregado) corStatus = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                    if (c.descarregada === 'SIM') corStatus = 'bg-emerald-100 text-emerald-800 border-emerald-300';
                     else if (c.naPorta) corStatus = 'bg-indigo-100 text-indigo-800 border-indigo-300';
 
                     htmlCargas += `

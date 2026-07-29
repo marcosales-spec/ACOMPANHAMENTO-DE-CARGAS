@@ -12,6 +12,9 @@
     
     <!-- BIBLIOTECA PARA LER EXCEL/CSV (SheetJS) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- SDKs do Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -275,23 +278,40 @@
 
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
+        // Configuração do Firebase
+        const firebaseConfig = {
+          apiKey: "AIzaSyDVv7A8Gp0qJckqFkop74hsK835X7oySco",
+          authDomain: "cargas-logistica.firebaseapp.com",
+          databaseURL: "https://cargas-logistica-default-rtdb.firebaseio.com",
+          projectId: "cargas-logistica",
+          storageBucket: "cargas-logistica.firebasestorage.app",
+          messagingSenderId: "151760857728",
+          appId: "1:151760857728:web:28600ad6a240e0c8b79465",
+          measurementId: "G-LJV2HLCK0"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         let cargas = [];
         let modoVisao = 'tabela'; // 'tabela' ou 'calendario'
         let modoFiltroCalendario = 'mes'; // 'mes', 'semana_atual', 'proxima_semana', 'semana_anterior'
         let dataCalendarioAtual = new Date();
 
         window.addEventListener('DOMContentLoaded', () => {
-            const salvas = localStorage.getItem('cargas_congeladas_v3');
-            if (salvas) {
-                try { cargas = JSON.parse(salvas); } catch(e) { cargas = []; }
-            }
-            renderizar();
+            // Escuta alterações na nuvem em tempo real
+            db.ref('cargas').on('value', (snapshot) => {
+                const data = snapshot.val();
+                cargas = data ? Object.values(data) : [];
+                renderizar();
+            });
         });
 
         function salvarStorage() {
-            localStorage.setItem('cargas_congeladas_v3', JSON.stringify(cargas));
+            // Salva na nuvem (Firebase)
+            db.ref('cargas').set(cargas);
         }
-
         function alternarVisao(modo) {
             modoVisao = modo;
             const btnTabela = document.getElementById('btn-view-table');

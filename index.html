@@ -21,7 +21,7 @@
 
     <!-- HEADER / NAVBAR -->
     <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="max-w-[98%] mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="p-2 bg-blue-600 rounded-lg text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4z"/></svg>
@@ -44,8 +44,8 @@
         </div>
     </header>
 
-    <!-- CONTAINER PRINCIPAL -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- CONTAINER PRINCIPAL LARGURA AMPLIADA PARA PARAR DE CORTAR A TABELA -->
+    <main class="flex-1 max-w-[98%] w-full mx-auto px-2 py-6 space-y-6">
 
         <!-- DASHBOARD -->
         <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -105,24 +105,24 @@
         <!-- TABELA GERAL -->
         <section id="view-table" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full text-left text-sm border-collapse">
+                <table class="w-full text-left text-xs border-collapse whitespace-nowrap">
                     <thead>
-                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
-                            <th class="py-3 px-4">Origem</th>
-                            <th class="py-3 px-4">Fornecedor</th>
-                            <th class="py-3 px-4">Motorista</th>
-                            <th class="py-3 px-4">Data Coleta</th>
-                            <th class="py-3 px-4">Hora Coleta</th>
-                            <th class="py-3 px-4">Fim Coleta</th>
-                            <th class="py-3 px-4">Hora Fim</th>
-                            <th class="py-3 px-4 text-center">Carregado</th>
-                            <th class="py-3 px-4 font-semibold text-indigo-600">Tempo Coleta</th>
-                            <th class="py-3 px-4 font-semibold text-blue-600">Prev. Chegada</th>
-                            <th class="py-3 px-4">Horas</th>
-                            <th class="py-3 px-4 text-center">Entrada</th>
-                            <th class="py-3 px-4 text-center">Na Porta</th>
-                            <th class="py-3 px-4 text-center">Descarregada</th>
-                            <th class="py-3 px-4 text-right">Ações</th>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
+                            <th class="py-2.5 px-3">Origem</th>
+                            <th class="py-2.5 px-3">Fornecedor</th>
+                            <th class="py-2.5 px-3">Motorista</th>
+                            <th class="py-2.5 px-3">Data Coleta</th>
+                            <th class="py-2.5 px-3">Hora Coleta</th>
+                            <th class="py-2.5 px-3">Fim Coleta</th>
+                            <th class="py-2.5 px-3">Hora Fim</th>
+                            <th class="py-2.5 px-3 text-center">Carregado</th>
+                            <th class="py-2.5 px-3 font-semibold text-indigo-600 bg-indigo-50/50">Tempo Coleta</th>
+                            <th class="py-2.5 px-3 font-semibold text-blue-600 bg-blue-50/50">Prev. Chegada</th>
+                            <th class="py-2.5 px-3">Horas</th>
+                            <th class="py-2.5 px-3 text-center">Entrada</th>
+                            <th class="py-2.5 px-3 text-center">Na Porta</th>
+                            <th class="py-2.5 px-3 text-center">Descarregada</th>
+                            <th class="py-2.5 px-3 text-right">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="table-body" class="divide-y divide-slate-100 text-slate-700"></tbody>
@@ -273,8 +273,8 @@
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
         const dadosIniciais = [
-            { id: '1', origem: 'PR', dataColeta: '2026-07-29', horaColeta: '05:33', fimColeta: '2026-07-30', horaFimColeta: '04:33', carregado: false, fornecedor: 'FRIELLA', motorista: 'MAURICIO', entrada: false, naPorta: false, descarregada: 'NÃO', prevChegada: '2026-08-02', refHoras: '72:00:00' },
-            { id: '2', origem: 'MG', dataColeta: '2026-07-28', horaColeta: '09:16', fimColeta: '2026-07-28', horaFimColeta: '10:21', carregado: true, fornecedor: 'BEM BRASIL', motorista: 'MARCO ANTONIO', entrada: false, naPorta: false, descarregada: 'SIM', prevChegada: '2026-07-30', refHoras: '48:00:00' }
+            { id: '1', origem: 'PR', dataColeta: '2026-07-28', horaColeta: '15:43', fimColeta: '2026-07-29', horaFimColeta: '04:48', carregado: false, fornecedor: 'FRIELLA', motorista: 'DIONISMAR', entrada: true, naPorta: false, descarregada: 'NÃO', prevChegada: '2026-07-31', refHoras: '48:00:00' },
+            { id: '2', origem: 'MG', dataColeta: '2026-07-24', horaColeta: '09:16', fimColeta: '2026-07-30', horaFimColeta: '10:21', carregado: false, fornecedor: 'BEM BRASIL', motorista: 'MARCO ANTONIO', entrada: true, naPorta: false, descarregada: 'NÃO', prevChegada: '2026-08-01', refHoras: '48:00:00' }
         ];
 
         let cargas = [];
@@ -478,31 +478,31 @@
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
                     tr.innerHTML = `
-                        <td class="py-3 px-4 font-semibold text-slate-800">
-                            <span class="inline-block px-2 py-0.5 rounded text-xs ${c.origem === 'PR' ? 'bg-blue-100 text-blue-700' : c.origem === 'GO' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}">${c.origem}</span>
+                        <td class="py-2.5 px-3 font-semibold text-slate-800">
+                            <span class="inline-block px-1.5 py-0.5 rounded text-[11px] ${c.origem === 'PR' ? 'bg-blue-100 text-blue-700' : c.origem === 'GO' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}">${c.origem}</span>
                         </td>
-                        <td class="py-3 px-4 font-medium text-slate-900">${c.fornecedor}</td>
-                        <td class="py-3 px-4 text-slate-600">${c.motorista}</td>
-                        <td class="py-3 px-4 text-slate-600 font-medium">${formatarData(c.dataColeta)}</td>
-                        <td class="py-3 px-4 text-slate-600 font-medium">${c.horaColeta || '-'}</td>
-                        <td class="py-3 px-4 text-slate-500">${formatarData(c.fimColeta)}</td>
-                        <td class="py-3 px-4 text-slate-500">${c.horaFimColeta || '-'}</td>
-                        <td class="py-3 px-4 text-center">
-                            <button type="button" onclick="toggleStatus('${c.id}', 'carregado')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.carregado ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.carregado ? 'SIM' : 'NÃO'}</button>
+                        <td class="py-2.5 px-3 font-bold text-slate-900">${c.fornecedor}</td>
+                        <td class="py-2.5 px-3 text-slate-600">${c.motorista}</td>
+                        <td class="py-2.5 px-3 text-slate-600 font-medium">${formatarData(c.dataColeta)}</td>
+                        <td class="py-2.5 px-3 text-slate-600 font-medium">${c.horaColeta || '-'}</td>
+                        <td class="py-2.5 px-3 text-slate-500">${formatarData(c.fimColeta)}</td>
+                        <td class="py-2.5 px-3 text-slate-500">${c.horaFimColeta || '-'}</td>
+                        <td class="py-2.5 px-3 text-center">
+                            <button type="button" onclick="toggleStatus('${c.id}', 'carregado')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold cursor-pointer ${c.carregado ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.carregado ? 'SIM' : 'NÃO'}</button>
                         </td>
-                        <td class="py-3 px-4 text-indigo-700 font-bold bg-indigo-50/50">${tempoColetaStr}</td>
-                        <td class="py-3 px-4 text-blue-700 font-bold bg-blue-50/50">${formatarData(c.prevChegada)}</td>
-                        <td class="py-3 px-4 text-slate-500 font-medium">${c.refHoras}</td>
-                        <td class="py-3 px-4 text-center">
-                            <button type="button" onclick="toggleStatus('${c.id}', 'entrada')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.entrada ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.entrada ? 'SIM' : 'NÃO'}</button>
+                        <td class="py-2.5 px-3 text-indigo-700 font-bold bg-indigo-50/50">${tempoColetaStr}</td>
+                        <td class="py-2.5 px-3 text-blue-700 font-bold bg-blue-50/50">${formatarData(c.prevChegada)}</td>
+                        <td class="py-2.5 px-3 text-slate-500 font-medium">${c.refHoras}</td>
+                        <td class="py-2.5 px-3 text-center">
+                            <button type="button" onclick="toggleStatus('${c.id}', 'entrada')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold cursor-pointer ${c.entrada ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.entrada ? 'SIM' : 'NÃO'}</button>
                         </td>
-                        <td class="py-3 px-4 text-center">
-                            <button type="button" onclick="toggleStatus('${c.id}', 'naPorta')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.naPorta ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.naPorta ? 'SIM' : 'NÃO'}</button>
+                        <td class="py-2.5 px-3 text-center">
+                            <button type="button" onclick="toggleStatus('${c.id}', 'naPorta')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold cursor-pointer ${c.naPorta ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.naPorta ? 'SIM' : 'NÃO'}</button>
                         </td>
-                        <td class="py-3 px-4 text-center">
-                            <button type="button" onclick="alternarDescarregada('${c.id}')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${badgeDescarregadaClass}">${statusDescarregada}</button>
+                        <td class="py-2.5 px-3 text-center">
+                            <button type="button" onclick="alternarDescarregada('${c.id}')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold cursor-pointer ${badgeDescarregadaClass}">${statusDescarregada}</button>
                         </td>
-                        <td class="py-3 px-4 text-right space-x-2">
+                        <td class="py-2.5 px-3 text-right space-x-2">
                             <button type="button" onclick="editarCarga('${c.id}')" class="text-blue-600 hover:underline font-medium text-xs cursor-pointer">Editar</button>
                             <button type="button" onclick="excluirCarga('${c.id}')" class="text-rose-600 hover:underline font-medium text-xs cursor-pointer">Excluir</button>
                         </td>

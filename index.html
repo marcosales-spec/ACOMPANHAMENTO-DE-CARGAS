@@ -120,7 +120,7 @@
                             <th class="py-2.5 px-3">Hora Fim</th>
                             <th class="py-2.5 px-3 text-center">Carregado</th>
                             <th class="py-2.5 px-3 font-semibold text-indigo-600 bg-indigo-50/50">Tempo Coleta</th>
-                            <th class="py-2.5 px-3 font-semibold text-blue-600 bg-blue-50/50">Prev. Chegada</th>
+                            <th class="py-2.5 px-3 font-semibold text-blue-600 bg-blue-50/50">📅 Prev. Chegada</th>
                             <th class="py-2.5 px-3 text-center">Entrada</th>
                             <th class="py-2.5 px-3 text-center">Na Porta</th>
                             <th class="py-2.5 px-3 text-center">Descarregada</th>
@@ -239,7 +239,17 @@
             localStorage.setItem('cargas_congeladas_v3', JSON.stringify(cargas));
         }
 
-        /* ----- NOVA LÓGICA DE IMPORTAÇÃO ----- */
+        function extrairValorColuna(row, termosPossiveis) {
+            const keys = Object.keys(row);
+            for (let termo of termosPossiveis) {
+                const keyEncontrada = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '').includes(termo.toLowerCase().replace(/[^a-z0-9]/g, '')));
+                if (keyEncontrada && row[keyEncontrada] !== undefined && row[keyEncontrada] !== null) {
+                    return String(row[keyEncontrada]).trim();
+                }
+            }
+            return '';
+        }
+
         function importarPlanilhaDeItens(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -253,20 +263,30 @@
                     const worksheet = workbook.Sheets[firstSheetName];
                     const json = XLSX.utils.sheet_to_json(worksheet);
 
-                    let novasCargasCriadas = 0;
+                    if (json.length === 0) {
+                        alert("A planilha importada está vazia!");
+                        return;
+                    }
+
+                    const pedidosProcessadosNoArquivo = new Set();
                     let produtosAdicionados = 0;
+                    let novasCargasCriadas = 0;
 
                     json.forEach(row => {
-                        const pedido = String(row['Pedido'] || row['PEDIDO'] || row['Numero_Pedido'] || row['pedido'] || '').trim();
+                        let pedido = extrairValorColuna(row, ['pedido', 'ped', 'ordem', 'num', 'doc']);
+                        
+                        if (!pedido) {
+                            const valores = Object.values(row);
+                            if (valores.length > 0) pedido = String(valores[0]).trim();
+                        }
+
                         if (!pedido) return;
 
-                        // Tenta encontrar a carga pelo número do pedido
                         let carga = cargas.find(c => String(c.numeroPedido).trim() === pedido);
 
-                        // SE NÃO EXISTE A CARGA COM ESSE PEDIDO -> CRIA UMA NOVA!
                         if (!carga) {
-                            const fornecedorPlanilha = row['Fornecedor'] || row['FORNECEDOR'] || row['fornecedor'] || 'A PREENCHER';
-                            
+                            const fornecedorPlanilha = extrairValorColuna(row, ['fornecedor', 'fornec', 'cliente', 'empresa']) || 'A PREENCHER';
+
                             carga = {
                                 id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                                 origem: 'PR',
@@ -286,31 +306,40 @@
                                 produtos: []
                             };
 
-                            cargas.unshift(carga); // Adiciona a nova carga no topo da lista
+                            cargas.unshift(carga);
                             novasCargasCriadas++;
                         }
 
-                        // Adiciona o produto na carga
+                        if (!pedidosProcessadosNoArquivo.has(pedido)) {
+                            carga.produtos = []; 
+                            pedidosProcessadosNoArquivo.add(pedido);
+                        }
+
+                        const codigo = extrairValorColuna(row, ['codigo', 'cod', 'item', 'sku']) || '-';
+                        const descricao = extrairValorColuna(row, ['descricao', 'desc', 'produto', 'nome']) || '-';
+                        const qtd = extrairValorColuna(row, ['quantidade', 'qtd', 'quant', 'vol']) || 0;
+                        const unidade = extrairValorColuna(row, ['unidade', 'und', 'un', 'emb']) || 'CX';
+
                         carga.produtos.push({
-                            codigo: row['Codigo'] || row['CODIGO'] || row['codigo'] || '-',
-                            descricao: row['Descricao'] || row['DESCRICAO'] || row['descricao'] || '-',
-                            qtd: row['Quantidade'] || row['QUANTIDADE'] || row['qtd'] || row['Qtd'] || 0,
-                            unidade: row['Unidade'] || row['UNIDADE'] || row['unidade'] || 'CX'
+                            codigo: codigo,
+                            descricao: descricao,
+                            qtd: qtd,
+                            unidade: unidade
                         });
 
                         produtosAdicionados++;
                     });
 
-                    let msg = `Processamento concluído!\n• Total de produtos: ${produtosAdicionados}`;
+                    let msg = `Importação realizada com sucesso!\n• Total de itens lidos: ${produtosAdicionados}`;
                     if (novasCargasCriadas > 0) {
-                        msg += `\n• Novas cargas criadas: ${novasCargasCriadas} (Preencha os dados da entrega/motorista clicando em 'Editar')`;
+                        msg += `\n• Novas cargas criadas: ${novasCargasCriadas} (Clique em 'Editar' para preencher os dados de transporte)`;
                     }
                     alert(msg);
 
                     salvarStorage();
                     renderizar();
                 } catch (error) {
-                    alert("Erro ao ler o arquivo Excel/CSV.");
+                    alert("Erro ao ler a planilha. Certifique-se de que é um arquivo Excel (.xlsx, .xls) ou CSV válido.");
                     console.error(error);
                 } finally {
                     document.getElementById('input-importar-itens').value = ''; 
@@ -399,6 +428,14 @@
             return `${p[2]}/${p[1]}/${p[0]}`;
         }
 
+        function atualizarPrevChegadaDireto(id, novaData) {
+            const idx = cargas.findIndex(c => c.id === id);
+            if (idx !== -1) {
+                cargas[idx].prevChegada = novaData;
+                salvarStorage();
+            }
+        }
+
         function aplicarFiltros() { renderizar(); }
 
         function obterCargasFiltradas() {
@@ -440,7 +477,6 @@
                 const temProdutos = c.produtos && c.produtos.length > 0;
                 const rowBgClass = c.descarregada === 'SIM' ? 'bg-emerald-50/70 hover:bg-emerald-100/70' : 'hover:bg-slate-50';
 
-                // LINHA PRINCIPAL
                 const trPrincipal = document.createElement('tr');
                 trPrincipal.className = `${rowBgClass} transition border-b border-slate-100`;
                 trPrincipal.innerHTML = `
@@ -470,7 +506,14 @@
                         <button onclick="toggleStatus('${c.id}', 'carregado')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold cursor-pointer ${c.carregado ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.carregado ? 'SIM' : 'NÃO'}</button>
                     </td>
                     <td class="py-2.5 px-3 text-indigo-700 font-bold bg-indigo-50/50">${calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta)}</td>
-                    <td class="py-2.5 px-3 text-blue-700 font-bold bg-blue-50/50">${formatarData(c.prevChegada)}</td>
+                    
+                    <!-- CALENDÁRIO DA PREVISÃO DE CHEGADA NA TABELA -->
+                    <td class="py-2 px-2 bg-blue-50/50">
+                        <input type="date" value="${c.prevChegada || ''}" 
+                            onchange="atualizarPrevChegadaDireto('${c.id}', this.value)"
+                            class="px-2 py-1 text-xs font-bold text-blue-900 bg-white border border-blue-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                    </td>
+
                     <td class="py-2.5 px-3 text-center">
                         <button onclick="toggleStatus('${c.id}', 'entrada')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold cursor-pointer ${c.entrada ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.entrada ? 'SIM' : 'NÃO'}</button>
                     </td>
@@ -483,7 +526,6 @@
                 `;
                 tbody.appendChild(trPrincipal);
 
-                // LINHA EXPANDÍVEL (ITENS DO PEDIDO)
                 if (temProdutos) {
                     const trFilha = document.createElement('tr');
                     trFilha.id = `produtos-carga-${c.id}`;

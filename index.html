@@ -41,12 +41,9 @@
                 <input type="file" id="input-importar-itens" accept=".xlsx, .xls, .csv" class="hidden" onchange="importarPlanilhaDeItens(event)">
                 
                 <button type="button" onclick="document.getElementById('input-importar-itens').click()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg transition shadow-sm flex items-center space-x-2 cursor-pointer">
-                    <span>📦 Importar Itens</span>
+                    <span>📦 Importar Planilha / Pedido</span>
                 </button>
 
-                <button type="button" onclick="exportarCSV()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700 flex items-center space-x-2 cursor-pointer">
-                    <span>Exportar CSV</span>
-                </button>
                 <button type="button" onclick="abrirModalNovaCarga()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm transition flex items-center space-x-2 cursor-pointer">
                     <span class="text-lg leading-none">+</span>
                     <span>Nova Carga</span>
@@ -104,12 +101,6 @@
                     <option value="descarregada">Descarregada</option>
                 </select>
             </div>
-
-            <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
-                <button id="btn-view-table" type="button" onclick="alternarVisao('table')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition bg-white text-slate-800 shadow-sm cursor-pointer">Tabela</button>
-                <button id="btn-view-kanban" type="button" onclick="alternarVisao('kanban')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900 cursor-pointer">Kanban</button>
-                <button id="btn-view-calendar" type="button" onclick="alternarVisao('calendar')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900 cursor-pointer">📅 Calendário</button>
-            </div>
         </section>
 
         <!-- TABELA GERAL -->
@@ -138,17 +129,6 @@
                     <tbody id="table-body" class="text-slate-700"></tbody>
                 </table>
             </div>
-            <div id="empty-state" class="hidden py-12 text-center text-slate-400">
-                <p>Nenhuma carga encontrada com os filtros selecionados.</p>
-            </div>
-        </section>
-
-        <!-- KANBAN E CALENDÁRIO -->
-        <section id="view-kanban" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="col-span-3 text-center text-slate-400 py-10">Kanban Ativo (Vide Funções)</div>
-        </section>
-        <section id="view-calendar" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
-             <div class="col-span-3 text-center text-slate-400 py-10">Calendário Ativo (Vide Funções)</div>
         </section>
 
     </main>
@@ -174,7 +154,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Horas</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Horas Ref.</label>
                         <select id="carga-ref-horas" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
                             <option value="48:00:00">48 hrs</option>
                             <option value="72:00:00">72 hrs</option>
@@ -183,7 +163,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-indigo-600 mb-1">Nº do Pedido</label>
-                        <input type="text" id="carga-pedido" placeholder="Ex: 32045" class="w-full px-3 py-2 border border-indigo-200 bg-indigo-50/30 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <input type="text" id="carga-pedido" placeholder="Ex: 32222" class="w-full px-3 py-2 border border-indigo-200 bg-indigo-50/30 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                     </div>
                 </div>
 
@@ -201,7 +181,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Data da Coleta</label>
-                        <input type="date" id="carga-data-coleta" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="date" id="carga-data-coleta" onchange="calcularPrevisaoAutomaticamente()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Hora da Coleta</label>
@@ -212,7 +192,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Fim da Coleta</label>
-                        <input type="date" id="carga-fim-coleta" onchange="calcularPrevisaoAutomaticamente()" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="date" id="carga-fim-coleta" onchange="calcularPrevisaoAutomaticamente()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Hora Fim Coleta</label>
@@ -227,13 +207,17 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-blue-900 mb-1">Prev. Chegada</label>
-                        <input type="date" id="carga-prev-chegada" required class="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm font-semibold text-blue-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="date" id="carga-prev-chegada" class="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm font-semibold text-blue-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                 </div>
 
-                <div class="pt-4 flex items-center justify-end space-x-3 border-t border-slate-100">
-                    <button type="button" onclick="fecharModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition cursor-pointer">Cancelar</button>
-                    <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm transition cursor-pointer">Salvar Carga</button>
+                <div class="pt-4 flex items-center justify-between border-t border-slate-100">
+                    <button type="button" onclick="excluirCargaAtual()" id="btn-excluir-carga" class="px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-xs font-semibold transition hidden">Excluir Carga</button>
+                    
+                    <div class="flex items-center space-x-3 ml-auto">
+                        <button type="button" onclick="fecharModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition cursor-pointer">Cancelar</button>
+                        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm transition cursor-pointer">Salvar Carga</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -241,35 +225,21 @@
 
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
-        // REMOVIDO O ITEM FICTÍCIO PRD-100 DAQUI:
-        const dadosIniciais = [
-            { 
-                id: '1', origem: 'PR', numeroPedido: '32045', 
-                dataColeta: '2026-07-28', horaColeta: '15:43', fimColeta: '2026-07-29', horaFimColeta: '04:48', 
-                carregado: false, fornecedor: 'FRIELLA', motorista: 'DIONISMAR', 
-                entrada: true, naPorta: false, descarregada: 'NÃO', prevChegada: '2026-07-31', refHoras: '48:00:00',
-                produtos: [] // Vazio para aceitar apenas o que for importado da planilha!
-            }
-        ];
-
         let cargas = [];
 
         window.addEventListener('DOMContentLoaded', () => {
-            const salvas = localStorage.getItem('cargas_congeladas_v2');
+            const salvas = localStorage.getItem('cargas_congeladas_v3');
             if (salvas) {
-                try { cargas = JSON.parse(salvas); } catch(e) { cargas = dadosIniciais; }
-            } else {
-                cargas = dadosIniciais;
-                salvarStorage();
+                try { cargas = JSON.parse(salvas); } catch(e) { cargas = []; }
             }
             renderizar();
         });
 
         function salvarStorage() {
-            localStorage.setItem('cargas_congeladas_v2', JSON.stringify(cargas));
+            localStorage.setItem('cargas_congeladas_v3', JSON.stringify(cargas));
         }
 
-        /* ----- LÓGICA DE IMPORTAÇÃO CORRIGIDA ----- */
+        /* ----- NOVA LÓGICA DE IMPORTAÇÃO ----- */
         function importarPlanilhaDeItens(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -283,48 +253,64 @@
                     const worksheet = workbook.Sheets[firstSheetName];
                     const json = XLSX.utils.sheet_to_json(worksheet);
 
-                    let itensImportados = 0;
-                    let pedidosEncontrados = new Set();
+                    let novasCargasCriadas = 0;
+                    let produtosAdicionados = 0;
 
-                    // 1. Limpa os produtos antigos das cargas que existem no arquivo lido
                     json.forEach(row => {
                         const pedido = String(row['Pedido'] || row['PEDIDO'] || row['Numero_Pedido'] || row['pedido'] || '').trim();
                         if (!pedido) return;
 
-                        const carga = cargas.find(c => String(c.numeroPedido).trim() === pedido);
-                        if (carga && !pedidosEncontrados.has(pedido)) {
-                            carga.produtos = []; // Limpa antes de colocar novos!
-                            pedidosEncontrados.add(pedido);
+                        // Tenta encontrar a carga pelo número do pedido
+                        let carga = cargas.find(c => String(c.numeroPedido).trim() === pedido);
+
+                        // SE NÃO EXISTE A CARGA COM ESSE PEDIDO -> CRIA UMA NOVA!
+                        if (!carga) {
+                            const fornecedorPlanilha = row['Fornecedor'] || row['FORNECEDOR'] || row['fornecedor'] || 'A PREENCHER';
+                            
+                            carga = {
+                                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+                                origem: 'PR',
+                                refHoras: '48:00:00',
+                                numeroPedido: pedido,
+                                fornecedor: fornecedorPlanilha,
+                                motorista: 'A PREENCHER',
+                                dataColeta: '',
+                                horaColeta: '',
+                                fimColeta: '',
+                                horaFimColeta: '',
+                                prevChegada: '',
+                                entrada: false,
+                                naPorta: false,
+                                carregado: false,
+                                descarregada: 'NÃO',
+                                produtos: []
+                            };
+
+                            cargas.unshift(carga); // Adiciona a nova carga no topo da lista
+                            novasCargasCriadas++;
                         }
+
+                        // Adiciona o produto na carga
+                        carga.produtos.push({
+                            codigo: row['Codigo'] || row['CODIGO'] || row['codigo'] || '-',
+                            descricao: row['Descricao'] || row['DESCRICAO'] || row['descricao'] || '-',
+                            qtd: row['Quantidade'] || row['QUANTIDADE'] || row['qtd'] || row['Qtd'] || 0,
+                            unidade: row['Unidade'] || row['UNIDADE'] || row['unidade'] || 'CX'
+                        });
+
+                        produtosAdicionados++;
                     });
 
-                    // 2. Insere os produtos lidos na planilha
-                    json.forEach(row => {
-                        const pedido = String(row['Pedido'] || row['PEDIDO'] || row['Numero_Pedido'] || row['pedido'] || '').trim();
-                        if (!pedido) return;
-
-                        const carga = cargas.find(c => String(c.numeroPedido).trim() === pedido);
-                        if (carga) {
-                            carga.produtos.push({
-                                codigo: row['Codigo'] || row['CODIGO'] || row['codigo'] || '-',
-                                descricao: row['Descricao'] || row['DESCRICAO'] || row['descricao'] || '-',
-                                qtd: row['Quantidade'] || row['QUANTIDADE'] || row['qtd'] || row['Qtd'] || 0,
-                                unidade: row['Unidade'] || row['UNIDADE'] || row['unidade'] || 'CX'
-                            });
-                            itensImportados++;
-                        }
-                    });
-
-                    if (itensImportados > 0) {
-                        alert(`Sucesso! ${itensImportados} produto(s) vinculado(s) a ${pedidosEncontrados.size} carga(s).`);
-                    } else {
-                        alert("Nenhum pedido correspondente foi encontrado na planilha.");
+                    let msg = `Processamento concluído!\n• Total de produtos: ${produtosAdicionados}`;
+                    if (novasCargasCriadas > 0) {
+                        msg += `\n• Novas cargas criadas: ${novasCargasCriadas} (Preencha os dados da entrega/motorista clicando em 'Editar')`;
                     }
+                    alert(msg);
 
                     salvarStorage();
                     renderizar();
                 } catch (error) {
-                    alert("Erro ao ler o arquivo. Certifique-se que é um Excel ou CSV válido.");
+                    alert("Erro ao ler o arquivo Excel/CSV.");
                     console.error(error);
                 } finally {
                     document.getElementById('input-importar-itens').value = ''; 
@@ -413,12 +399,6 @@
             return `${p[2]}/${p[1]}/${p[0]}`;
         }
 
-        function alternarVisao(visao) {
-            document.getElementById('view-table').classList.toggle('hidden', visao !== 'table');
-            document.getElementById('view-kanban').classList.toggle('hidden', visao !== 'kanban');
-            document.getElementById('view-calendar').classList.toggle('hidden', visao !== 'calendar');
-        }
-
         function aplicarFiltros() { renderizar(); }
 
         function obterCargasFiltradas() {
@@ -451,6 +431,11 @@
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
+            if (filtradas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="15" class="py-8 text-center text-slate-400">Nenhuma carga cadastrada ou encontrada. Importe uma planilha para começar!</td></tr>`;
+                return;
+            }
+
             filtradas.forEach(c => {
                 const temProdutos = c.produtos && c.produtos.length > 0;
                 const rowBgClass = c.descarregada === 'SIM' ? 'bg-emerald-50/70 hover:bg-emerald-100/70' : 'hover:bg-slate-50';
@@ -460,7 +445,7 @@
                 trPrincipal.className = `${rowBgClass} transition border-b border-slate-100`;
                 trPrincipal.innerHTML = `
                     <td class="py-2.5 px-3 text-center space-x-2">
-                        <button type="button" onclick="editarCarga('${c.id}')" class="text-blue-600 hover:underline font-medium text-xs cursor-pointer">Editar</button>
+                        <button type="button" onclick="editarCarga('${c.id}')" class="text-blue-600 hover:underline font-bold text-xs cursor-pointer">Editar</button>
                     </td>
                     <td class="py-2.5 px-3 font-semibold text-slate-800">
                         <span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-200">${c.origem}</span>
@@ -475,8 +460,8 @@
                             <span class="font-bold ${temProdutos ? 'text-indigo-600' : 'text-slate-500'}">${c.numeroPedido || '-'}</span>
                         </div>
                     </td>
-                    <td class="py-2.5 px-3 font-bold text-slate-900">${c.fornecedor}</td>
-                    <td class="py-2.5 px-3 text-slate-600">${c.motorista}</td>
+                    <td class="py-2.5 px-3 font-bold ${c.fornecedor === 'A PREENCHER' ? 'text-amber-600 italic' : 'text-slate-900'}">${c.fornecedor}</td>
+                    <td class="py-2.5 px-3 ${c.motorista === 'A PREENCHER' ? 'text-amber-600 italic font-semibold' : 'text-slate-600'}">${c.motorista}</td>
                     <td class="py-2.5 px-3 text-slate-600 font-medium">${formatarData(c.dataColeta)}</td>
                     <td class="py-2.5 px-3 text-slate-600 font-medium">${c.horaColeta || '-'}</td>
                     <td class="py-2.5 px-3 text-slate-500">${formatarData(c.fimColeta)}</td>
@@ -552,6 +537,7 @@
             document.getElementById('modal-title').innerText = 'Nova Carga';
             document.getElementById('form-carga').reset();
             document.getElementById('carga-id').value = '';
+            document.getElementById('btn-excluir-carga').classList.add('hidden');
             aoMudarOrigem();
             document.getElementById('modal-carga').classList.remove('hidden');
         }
@@ -567,16 +553,28 @@
             document.getElementById('carga-origem').value = c.origem;
             document.getElementById('carga-ref-horas').value = c.refHoras || '48:00:00';
             document.getElementById('carga-pedido').value = c.numeroPedido || '';
-            document.getElementById('carga-fornecedor').value = c.fornecedor;
-            document.getElementById('carga-motorista').value = c.motorista;
+            document.getElementById('carga-fornecedor').value = c.fornecedor === 'A PREENCHER' ? '' : c.fornecedor;
+            document.getElementById('carga-motorista').value = c.motorista === 'A PREENCHER' ? '' : c.motorista;
             document.getElementById('carga-data-coleta').value = c.dataColeta || '';
             document.getElementById('carga-hora-coleta').value = c.horaColeta || '';
-            document.getElementById('carga-fim-coleta').value = c.fimColeta;
+            document.getElementById('carga-fim-coleta').value = c.fimColeta || '';
             document.getElementById('carga-hora-fim-coleta').value = c.horaFimColeta || '';
-            document.getElementById('carga-prev-chegada').value = c.prevChegada;
+            document.getElementById('carga-prev-chegada').value = c.prevChegada || '';
 
+            document.getElementById('btn-excluir-carga').classList.remove('hidden');
             document.getElementById('modal-carga').classList.remove('hidden');
             calcularPrevisaoAutomaticamente();
+        }
+
+        function excluirCargaAtual() {
+            const id = document.getElementById('carga-id').value;
+            if (!id) return;
+            if (confirm("Tem certeza que deseja excluir esta carga?")) {
+                cargas = cargas.filter(c => c.id !== id);
+                salvarStorage();
+                renderizar();
+                fecharModal();
+            }
         }
 
         function salvarCarga(e) {
@@ -589,8 +587,8 @@
                 origem: document.getElementById('carga-origem').value,
                 refHoras: document.getElementById('carga-ref-horas').value,
                 numeroPedido: document.getElementById('carga-pedido').value,
-                fornecedor: document.getElementById('carga-fornecedor').value,
-                motorista: document.getElementById('carga-motorista').value,
+                fornecedor: document.getElementById('carga-fornecedor').value || 'A PREENCHER',
+                motorista: document.getElementById('carga-motorista').value || 'A PREENCHER',
                 dataColeta: document.getElementById('carga-data-coleta').value,
                 horaColeta: document.getElementById('carga-hora-coleta').value,
                 fimColeta: document.getElementById('carga-fim-coleta').value,

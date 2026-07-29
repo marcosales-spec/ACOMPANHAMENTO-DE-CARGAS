@@ -117,6 +117,7 @@
                             <th class="py-3 px-4 text-center">Entrada</th>
                             <th class="py-3 px-4 text-center">Na Porta</th>
                             <th class="py-3 px-4 text-center">Carregado</th>
+                            <th class="py-3 px-4 text-center">Descarregada</th>
                             <th class="py-3 px-4 text-right">Ações</th>
                         </tr>
                     </thead>
@@ -268,8 +269,8 @@
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
         const dadosIniciais = [
-            { id: '1', origem: 'PR', dataColeta: '2026-07-29', horaColeta: '05:33', fimColeta: '2026-07-30', horaFimColeta: '04:33', carregado: false, fornecedor: 'FRIELLA', motorista: 'MAURICIO', entrada: false, naPorta: false, prevChegada: '2026-08-02', refHoras: '72:00:00' },
-            { id: '2', origem: 'MG', dataColeta: '2026-07-28', horaColeta: '09:16', fimColeta: '2026-07-28', horaFimColeta: '10:21', carregado: true, fornecedor: 'BEM BRASIL', motorista: 'MARCO ANTONIO', entrada: false, naPorta: false, prevChegada: '2026-07-30', refHoras: '48:00:00' }
+            { id: '1', origem: 'PR', dataColeta: '2026-07-29', horaColeta: '05:33', fimColeta: '2026-07-30', horaFimColeta: '04:33', carregado: false, fornecedor: 'FRIELLA', motorista: 'MAURICIO', entrada: false, naPorta: false, descarregada: 'NÃO', prevChegada: '2026-08-02', refHoras: '72:00:00' },
+            { id: '2', origem: 'MG', dataColeta: '2026-07-28', horaColeta: '09:16', fimColeta: '2026-07-28', horaFimColeta: '10:21', carregado: true, fornecedor: 'BEM BRASIL', motorista: 'MARCO ANTONIO', entrada: false, naPorta: false, descarregada: 'NÃO', prevChegada: '2026-07-30', refHoras: '48:00:00' }
         ];
 
         let cargas = [];
@@ -462,6 +463,15 @@
                 emptyState.classList.add('hidden');
                 filtradas.forEach(c => {
                     const tempoColetaStr = calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta);
+                    const statusDescarregada = c.descarregada || 'NÃO';
+
+                    // Estilos da badge DESCARREGADA
+                    let badgeDescarregadaClass = 'bg-rose-100 text-rose-700';
+                    if (statusDescarregada === 'PARCIAL') {
+                        badgeDescarregadaClass = 'bg-amber-100 text-amber-700';
+                    } else if (statusDescarregada === 'SIM') {
+                        badgeDescarregadaClass = 'bg-emerald-100 text-emerald-700';
+                    }
 
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
@@ -486,6 +496,9 @@
                         </td>
                         <td class="py-3 px-4 text-center">
                             <button type="button" onclick="toggleStatus('${c.id}', 'carregado')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.carregado ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.carregado ? 'SIM' : 'NÃO'}</button>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button type="button" onclick="alternarDescarregada('${c.id}')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${badgeDescarregadaClass}">${statusDescarregada}</button>
                         </td>
                         <td class="py-3 px-4 text-right space-x-2">
                             <button type="button" onclick="editarCarga('${c.id}')" class="text-blue-600 hover:underline font-medium text-xs cursor-pointer">Editar</button>
@@ -631,6 +644,19 @@
             }
         }
 
+        function alternarDescarregada(id) {
+            const idx = cargas.findIndex(c => c.id === id);
+            if (idx !== -1) {
+                const atual = cargas[idx].descarregada || 'NÃO';
+                if (atual === 'NÃO') cargas[idx].descarregada = 'PARCIAL';
+                else if (atual === 'PARCIAL') cargas[idx].descarregada = 'SIM';
+                else cargas[idx].descarregada = 'NÃO';
+
+                salvarStorage();
+                renderizar();
+            }
+        }
+
         function abrirModalNovaCarga() {
             document.getElementById('modal-title').innerText = 'Nova Carga';
             document.getElementById('form-carga').reset();
@@ -670,10 +696,10 @@
             e.preventDefault();
             const id = document.getElementById('carga-id').value;
 
-            // Mantém os status existentes ao editar ou define como false por padrão ao criar
             let entradaAtual = false;
             let naPortaAtual = false;
             let carregadoAtual = false;
+            let descarregadaAtual = 'NÃO';
 
             if (id) {
                 const cExistente = cargas.find(c => c.id === id);
@@ -681,6 +707,7 @@
                     entradaAtual = cExistente.entrada;
                     naPortaAtual = cExistente.naPorta;
                     carregadoAtual = cExistente.carregado;
+                    descarregadaAtual = cExistente.descarregada || 'NÃO';
                 }
             }
 
@@ -697,7 +724,8 @@
                 prevChegada: document.getElementById('carga-prev-chegada').value,
                 entrada: entradaAtual,
                 naPorta: naPortaAtual,
-                carregado: carregadoAtual
+                carregado: carregadoAtual,
+                descarregada: descarregadaAtual
             };
 
             if (id) {
@@ -721,10 +749,10 @@
         }
 
         function exportarCSV() {
-            let csv = 'Origem;Fornecedor;Motorista;Data Coleta;Hora Coleta;Fim Coleta;Hora Fim;Tempo Coleta;Prev Chegada;Horas;Entrada;Na Porta;Carregado\n';
+            let csv = 'Origem;Fornecedor;Motorista;Data Coleta;Hora Coleta;Fim Coleta;Hora Fim;Tempo Coleta;Prev Chegada;Horas;Entrada;Na Porta;Carregado;Descarregada\n';
             cargas.forEach(c => {
                 const tempoStr = calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta);
-                csv += `${c.origem};${c.fornecedor};${c.motorista};${c.dataColeta || ''};${c.horaColeta || ''};${c.fimColeta};${c.horaFimColeta || ''};${tempoStr};${c.prevChegada};${c.refHoras};${c.entrada ? 'SIM' : 'NÃO'};${c.naPorta ? 'SIM' : 'NÃO'};${c.carregado ? 'SIM' : 'NÃO'}\n`;
+                csv += `${c.origem};${c.fornecedor};${c.motorista};${c.dataColeta || ''};${c.horaColeta || ''};${c.fimColeta};${c.horaFimColeta || ''};${tempoStr};${c.prevChegada};${c.refHoras};${c.entrada ? 'SIM' : 'NÃO'};${c.naPorta ? 'SIM' : 'NÃO'};${c.carregado ? 'SIM' : 'NÃO'};${c.descarregada || 'NÃO'}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

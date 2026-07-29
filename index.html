@@ -43,7 +43,7 @@
     <!-- CONTAINER PRINCIPAL -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        <!-- DASHBOARD (CARDS RENOMEADOS) -->
+        <!-- DASHBOARD -->
         <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
                 <div>
@@ -98,7 +98,7 @@
             </div>
         </section>
 
-        <!-- TABELA GERAL -->
+        <!-- TABELA GERAL (REORDENADA) -->
         <section id="view-table" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="overflow-x-auto custom-scrollbar">
                 <table class="w-full text-left text-sm border-collapse">
@@ -111,12 +111,12 @@
                             <th class="py-3 px-4">Hora Coleta</th>
                             <th class="py-3 px-4">Fim Coleta</th>
                             <th class="py-3 px-4">Hora Fim</th>
+                            <th class="py-3 px-4 text-center">Carregado</th>
                             <th class="py-3 px-4 font-semibold text-indigo-600">Tempo Coleta</th>
                             <th class="py-3 px-4 font-semibold text-blue-600">Prev. Chegada</th>
                             <th class="py-3 px-4">Horas</th>
                             <th class="py-3 px-4 text-center">Entrada</th>
                             <th class="py-3 px-4 text-center">Na Porta</th>
-                            <th class="py-3 px-4 text-center">Carregado</th>
                             <th class="py-3 px-4 text-center">Descarregada</th>
                             <th class="py-3 px-4 text-right">Ações</th>
                         </tr>
@@ -446,7 +446,7 @@
         function renderizar() {
             const filtradas = obterCargasFiltradas();
             
-            // ATUALIZAÇÃO DOS ESTATÍSTICAS / METRICAS
+            // ESTATÍSTICAS
             document.getElementById('stat-total').innerText = cargas.length;
             document.getElementById('stat-transito').innerText = cargas.filter(c => c.descarregada !== 'SIM' && !c.naPorta).length;
             document.getElementById('stat-porta').innerText = cargas.filter(c => c.descarregada !== 'SIM' && c.naPorta).length;
@@ -483,6 +483,9 @@
                         <td class="py-3 px-4 text-slate-600 font-medium">${c.horaColeta || '-'}</td>
                         <td class="py-3 px-4 text-slate-500">${formatarData(c.fimColeta)}</td>
                         <td class="py-3 px-4 text-slate-500">${c.horaFimColeta || '-'}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button type="button" onclick="toggleStatus('${c.id}', 'carregado')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.carregado ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.carregado ? 'SIM' : 'NÃO'}</button>
+                        </td>
                         <td class="py-3 px-4 text-indigo-700 font-bold bg-indigo-50/50">${tempoColetaStr}</td>
                         <td class="py-3 px-4 text-blue-700 font-bold bg-blue-50/50">${formatarData(c.prevChegada)}</td>
                         <td class="py-3 px-4 text-slate-500 font-medium">${c.refHoras}</td>
@@ -491,9 +494,6 @@
                         </td>
                         <td class="py-3 px-4 text-center">
                             <button type="button" onclick="toggleStatus('${c.id}', 'naPorta')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.naPorta ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.naPorta ? 'SIM' : 'NÃO'}</button>
-                        </td>
-                        <td class="py-3 px-4 text-center">
-                            <button type="button" onclick="toggleStatus('${c.id}', 'carregado')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${c.carregado ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.carregado ? 'SIM' : 'NÃO'}</button>
                         </td>
                         <td class="py-3 px-4 text-center">
                             <button type="button" onclick="alternarDescarregada('${c.id}')" class="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer ${badgeDescarregadaClass}">${statusDescarregada}</button>
@@ -747,10 +747,10 @@
         }
 
         function exportarCSV() {
-            let csv = 'Origem;Fornecedor;Motorista;Data Coleta;Hora Coleta;Fim Coleta;Hora Fim;Tempo Coleta;Prev Chegada;Horas;Entrada;Na Porta;Carregado;Descarregada\n';
+            let csv = 'Origem;Fornecedor;Motorista;Data Coleta;Hora Coleta;Fim Coleta;Hora Fim;Carregado;Tempo Coleta;Prev Chegada;Horas;Entrada;Na Porta;Descarregada\n';
             cargas.forEach(c => {
                 const tempoStr = calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta);
-                csv += `${c.origem};${c.fornecedor};${c.motorista};${c.dataColeta || ''};${c.horaColeta || ''};${c.fimColeta};${c.horaFimColeta || ''};${tempoStr};${c.prevChegada};${c.refHoras};${c.entrada ? 'SIM' : 'NÃO'};${c.naPorta ? 'SIM' : 'NÃO'};${c.carregado ? 'SIM' : 'NÃO'};${c.descarregada || 'NÃO'}\n`;
+                csv += `${c.origem};${c.fornecedor};${c.motorista};${c.dataColeta || ''};${c.horaColeta || ''};${c.fimColeta};${c.horaFimColeta || ''};${c.carregado ? 'SIM' : 'NÃO'};${tempoStr};${c.prevChegada};${c.refHoras};${c.entrada ? 'SIM' : 'NÃO'};${c.naPorta ? 'SIM' : 'NÃO'};${c.descarregada || 'NÃO'}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

@@ -36,7 +36,18 @@
                 </div>
             </div>
 
+            <!-- BOTÕES DE AÇÃO E MODOS DE VISÃO -->
             <div class="flex items-center space-x-3">
+                <!-- SELEÇÃO DE VISÃO: TABELA OU CALENDÁRIO -->
+                <div class="bg-slate-800 p-1 rounded-lg flex items-center space-x-1 border border-slate-700">
+                    <button id="btn-view-table" onclick="alternarVisao('tabela')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition bg-blue-600 text-white shadow">
+                        📊 Tabela
+                    </button>
+                    <button id="btn-view-calendar" onclick="alternarVisao('calendario')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700">
+                        📅 Calendário
+                    </button>
+                </div>
+
                 <!-- INPUT INVISÍVEL PARA ARQUIVO -->
                 <input type="file" id="input-importar-itens" accept=".xlsx, .xls, .csv" class="hidden" onchange="importarPlanilhaDeItens(event)">
                 
@@ -54,7 +65,7 @@
 
     <main class="flex-1 max-w-[98%] w-full mx-auto px-2 py-6 space-y-6">
 
-        <!-- DASHBOARD -->
+        <!-- DASHBOARD (CARDS SUPERIORES) -->
         <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
                 <div>
@@ -82,7 +93,7 @@
             </div>
         </section>
 
-        <!-- CONTROLES -->
+        <!-- CONTROLES E FILTROS -->
         <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex flex-wrap items-center gap-3 flex-1">
                 <input type="text" id="filter-search" oninput="aplicarFiltros()" placeholder="Buscar pedido, fornecedor, motorista..." class="flex-1 min-w-[250px] px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
@@ -103,7 +114,7 @@
             </div>
         </section>
 
-        <!-- TABELA GERAL -->
+        <!-- VISÃO 1: TABELA GERAL -->
         <section id="view-table" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="overflow-x-auto custom-scrollbar">
                 <table class="w-full text-left text-xs border-collapse whitespace-nowrap">
@@ -131,9 +142,36 @@
             </div>
         </section>
 
+        <!-- VISÃO 2: CALENDÁRIO VISUAL MENSAL -->
+        <section id="view-calendar" class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hidden">
+            <!-- NAVEGAÇÃO DO CALENDÁRIO -->
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+                <div class="flex items-center space-x-3">
+                    <h2 id="calendar-month-year" class="text-lg font-bold text-slate-800 capitalize"></h2>
+                    <div class="flex space-x-1">
+                        <button onclick="mudarMesCalendario(-1)" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition">◄ Mês Ant.</button>
+                        <button onclick="mudarMesCalendario(1)" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition">Próx. Mês ►</button>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4 text-xs font-semibold">
+                    <div class="flex items-center space-x-1"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> <span>Em Trânsito</span></div>
+                    <div class="flex items-center space-x-1"><span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span> <span>Na Porta</span></div>
+                    <div class="flex items-center space-x-1"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> <span>Descarregada</span></div>
+                </div>
+            </div>
+
+            <!-- DIAS DA SEMANA -->
+            <div class="grid grid-cols-7 gap-2 mb-2 text-center font-bold text-xs text-slate-500 uppercase tracking-wider">
+                <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+            </div>
+
+            <!-- GRADE DE DIAS DO CALENDÁRIO -->
+            <div id="calendar-grid" class="grid grid-cols-7 gap-2 auto-rows-fr"></div>
+        </section>
+
     </main>
 
-    <!-- MODAL DE CADASTRO -->
+    <!-- MODAL DE CADASTRO / EDIÇÃO DE CARGA -->
     <div id="modal-carga" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden border border-slate-100">
             <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
@@ -226,6 +264,8 @@
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
         let cargas = [];
+        let modoVisao = 'tabela'; // 'tabela' ou 'calendario'
+        let dataCalendarioAtual = new Date();
 
         window.addEventListener('DOMContentLoaded', () => {
             const salvas = localStorage.getItem('cargas_congeladas_v3');
@@ -237,6 +277,32 @@
 
         function salvarStorage() {
             localStorage.setItem('cargas_congeladas_v3', JSON.stringify(cargas));
+        }
+
+        function alternarVisao(modo) {
+            modoVisao = modo;
+            const btnTabela = document.getElementById('btn-view-table');
+            const btnCal = document.getElementById('btn-view-calendar');
+            const secTabela = document.getElementById('view-table');
+            const secCal = document.getElementById('view-calendar');
+
+            if (modo === 'tabela') {
+                secTabela.classList.remove('hidden');
+                secCal.classList.add('hidden');
+                btnTabela.className = "px-3 py-1.5 text-xs font-semibold rounded-md transition bg-blue-600 text-white shadow";
+                btnCal.className = "px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700";
+            } else {
+                secTabela.classList.add('hidden');
+                secCal.classList.remove('hidden');
+                btnCal.className = "px-3 py-1.5 text-xs font-semibold rounded-md transition bg-blue-600 text-white shadow";
+                btnTabela.className = "px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700";
+            }
+            renderizar();
+        }
+
+        function mudarMesCalendario(delta) {
+            dataCalendarioAtual.setMonth(dataCalendarioAtual.getMonth() + delta);
+            renderizarCalendario();
         }
 
         function extrairValorColuna(row, termosPossiveis) {
@@ -433,6 +499,7 @@
             if (idx !== -1) {
                 cargas[idx].prevChegada = novaData;
                 salvarStorage();
+                renderizar();
             }
         }
 
@@ -465,6 +532,14 @@
             document.getElementById('stat-porta').innerText = cargas.filter(c => c.descarregada !== 'SIM' && c.naPorta).length;
             document.getElementById('stat-descarregadas').innerText = cargas.filter(c => c.descarregada === 'SIM').length;
 
+            if (modoVisao === 'tabela') {
+                renderizarTabela(filtradas);
+            } else {
+                renderizarCalendario();
+            }
+        }
+
+        function renderizarTabela(filtradas) {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
@@ -507,7 +582,6 @@
                     </td>
                     <td class="py-2.5 px-3 text-indigo-700 font-bold bg-indigo-50/50">${calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta)}</td>
                     
-                    <!-- CALENDÁRIO DA PREVISÃO DE CHEGADA NA TABELA -->
                     <td class="py-2 px-2 bg-blue-50/50">
                         <input type="date" value="${c.prevChegada || ''}" 
                             onchange="atualizarPrevChegadaDireto('${c.id}', this.value)"
@@ -559,6 +633,67 @@
                     tbody.appendChild(trFilha);
                 }
             });
+        }
+
+        function renderizarCalendario() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            const ano = dataCalendarioAtual.getFullYear();
+            const mes = dataCalendarioAtual.getMonth();
+
+            const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            document.getElementById('calendar-month-year').innerText = `${nomesMeses[mes]} de ${ano}`;
+
+            const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+            const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
+
+            const filtradas = obterCargasFiltradas();
+
+            // Espaços em branco para os dias antes do início do mês
+            for (let i = 0; i < primeiroDiaSemana; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = "bg-slate-50 border border-slate-100 rounded-lg min-h-[100px]";
+                grid.appendChild(emptyCell);
+            }
+
+            // Renderizar cada dia do mês
+            for (let dia = 1; dia <= totalDiasMes; dia++) {
+                const dataStringIso = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+                
+                // Encontrar cargas com esta previsão de chegada
+                const cargasDoDia = filtradas.filter(c => c.prevChegada === dataStringIso);
+
+                const cell = document.createElement('div');
+                cell.className = "bg-white border border-slate-200 rounded-lg min-h-[110px] p-2 flex flex-col justify-between shadow-xs hover:border-blue-300 transition";
+
+                let htmlCargas = cargasDoDia.map(c => {
+                    let badgeColor = 'bg-amber-100 text-amber-800 border-amber-300';
+                    if (c.descarregada === 'SIM') badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                    else if (c.naPorta) badgeColor = 'bg-indigo-100 text-indigo-800 border-indigo-300';
+
+                    return `
+                        <div onclick="editarCarga('${c.id}')" class="p-1.5 mb-1 rounded text-[11px] border ${badgeColor} cursor-pointer hover:opacity-80 transition font-semibold truncate shadow-xs" title="${c.fornecedor} - Pedido ${c.numeroPedido}">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold">#${c.numeroPedido || 'S/N'}</span>
+                                <span class="text-[9px] px-1 bg-white/60 rounded">${c.origem}</span>
+                            </div>
+                            <div class="truncate text-[10px]">${c.fornecedor}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                cell.innerHTML = `
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-slate-700">${dia}</span>
+                        ${cargasDoDia.length > 0 ? `<span class="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">${cargasDoDia.length}</span>` : ''}
+                    </div>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar max-h-[90px]">
+                        ${htmlCargas}
+                    </div>
+                `;
+                grid.appendChild(cell);
+            }
         }
 
         function toggleStatus(id, campo) {

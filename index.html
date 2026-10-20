@@ -583,6 +583,79 @@
             return '';
         }
 
+        // Identifica a coluna de quantidade em planilhas com diferentes nomes de cabeçalho.
+        // Nunca confunde ausência de coluna com quantidade zero.
+        function pontuarColunaQuantidade(nomeColuna) {
+            const nome = normalizarTexto(nomeColuna);
+            if (!nome || nome.startsWith('__EMPTY')) return -1;
+            if (/^(VALOR|PRECO|VL|CUSTO|COD|ID|NOME|DESCRICAO|TOTALR|SUBTOTAL|UNITARIO)/.test(nome)) return -1;
+            if (['QTD', 'QTDE', 'QT', 'QTE', 'QUANTIDADE', 'QUANT', 'QNT', 'QNTD', 'QNTDE'].includes(nome)) return 150;
+
+            let nota = -1;
+            if (/^(QTD|QTDE|QTE|QNT|QUANT|QUANTIDADE|QT)(?!VALOR|PRECO|CUSTO|UNITARIO)/.test(nome)) nota = 110;
+            else if (/^(PESOLIQUIDO|PESOBRUTO|PESO|KG|KGS|QUILOS|QUILOGRAMAS)/.test(nome)) nota = 85;
+            else if (/^(NUMERODEVOLUMES|VOLUMES|VOLUME|QTDVOLUMES|CAIXAS)/.test(nome)) nota = 65;
+
+            if (nota < 0) return -1;
+            if (/(PEDID|SOLICIT|COMPRA|ENCOMENDAD|ITEM|PRODUTO)/.test(nome)) nota += 20;
+            if (/(FATURAD|RECEBID|ENTREG|CANCELAD|ESTOQUE|DEVOLV|SALDO|ANTERIOR|DISPONIVEL)/.test(nome)) nota -= 40;
+            return nota;
+        }
+
+        function lerQuantidadePlanilha(row, colunaQuantidade) {
+            if (!colunaQuantidade || !Object.prototype.hasOwnProperty.call(row, colunaQuantidade)) return '';
+            const valor = row[colunaQuantidade];
+            if (valor === undefined || valor === null) return '';
+            // Preserva a escrita original (inclusive 0 verdadeiro e casas decimais).
+            return String(valor).trim();
+        }
+
+        function escolherColunaQuantidade(linhas) {
+            const colunas = [...new Set(linhas.slice(0, 30).flatMap(row => Object.keys(row)))];
+            if (!colunas.length) return null;
+            const candidatas = colunas
+                .map((coluna, posicao) => ({ coluna, posicao, nota: pontuarColunaQuantidade(coluna) }))
+                .filter(item => item.nota >= 0)
+                .sort((a, b) => b.nota - a.nota || a.posicao - b.posicao);
+
+            if (candidatas.length) {
+                const comValores = candidatas.find(candidata =>
+                    linhas.some(row => lerQuantidadePlanilha(row, candidata.coluna) !== '')
+                );
+                if (comValores) return comValores.coluna;
+            }
+
+            // Quando o formato é desconhecido, permite selecionar a coluna exata, sem gerar zeros.
+            const opcoes = colunas.map((coluna, indice) => `${indice + 1}. ${coluna}`).join('\n');
+            const escolha = prompt(
+                'Não foi possível identificar automaticamente uma coluna com quantidades preenchidas.\n' +
+                'Informe o NÚMERO da coluna que contém a quantidade dos produtos:\n\n' +
+                opcoes + '\n\nCancelar interrompe a importação sem alterar as cargas.'
+            );
+            if (escolha === null) return null;
+            const indice = Number(String(escolha).trim());
+            if (!Number.isInteger(indice) || indice < 1 || indice > colunas.length) {
+                alert('Coluna de quantidade inválida. A importação foi cancelada sem alterar as cargas.');
+                return null;
+            }
+            return colunas[indice - 1];
+        }
+
+        function escaparAtributoHTML(valor) {
+            return String(valor == null ? '' : valor)
+                .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+        }
+
+        // Corrige inclusive as quantidades de produtos que já estejam salvos no Firebase.
+        function atualizarQuantidadeProduto(id, indice, novaQuantidade) {
+            const carga = cargas.find(item => String(item.id) === String(id));
+            if (!carga || !Array.isArray(carga.produtos) || !carga.produtos[indice]) return;
+            carga.produtos[indice].qtd = String(novaQuantidade).trim();
+            salvarStorage();
+            // Não renderiza imediatamente, evitando retirar o foco do campo editado.
+        }
+
         // Evita confundir "Cód.Fornec." com a coluna "Fornecedor".
         function extrairNomeFornecedor(row) {
             const chaves = Object.keys(row);
@@ -615,15 +688,19 @@
                     const workbook = XLSX.read(data, { type: 'array' });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
-                    const json = XLSX.utils.sheet_to_json(worksheet);
+                    const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
                     if (json.length === 0) {
                         alert("A planilha importada está vazia!");
                         return;
                     }
 
+                    const colunaQuantidade = escolherColunaQuantidade(json);
+                    if (!colunaQuantidade) return; // Não altera dados se a coluna não for definida.
+
                     const pedidosProcessadosNoArquivo = new Set();
                     let produtosAdicionados = 0;
+                    let quantidadesSemValor = 0;
                     let novasCargasCriadas = 0;
 
                     json.forEach(row => {
@@ -691,7 +768,8 @@
 
                         const codigo = extrairValorColuna(row, ['codigo', 'cod', 'item', 'sku']) || '-';
                         const descricao = extrairValorColuna(row, ['descricao', 'desc', 'produto', 'nome']) || '-';
-                        const qtd = extrairValorColuna(row, ['quantidade', 'qtd', 'quant', 'vol']) || 0;
+                        const qtd = lerQuantidadePlanilha(row, colunaQuantidade);
+                        if (qtd === '') quantidadesSemValor++;
                         const unidade = extrairValorColuna(row, ['unidade', 'und', 'un', 'emb']) || 'CX';
 
                         carga.produtos.push({
@@ -704,9 +782,13 @@
                         produtosAdicionados++;
                     });
 
-                    let msg = `Importação realizada com sucesso!\n• Total de itens lidos: ${produtosAdicionados}`;
+                    let msg = `Importação realizada!\n• Total de itens lidos: ${produtosAdicionados}`;
+                    msg += `\n• Coluna de quantidade utilizada: ${colunaQuantidade}`;
                     if (novasCargasCriadas > 0) {
                         msg += `\n• Novas cargas criadas: ${novasCargasCriadas} (Clique em 'Editar' para preencher os dados de transporte)`;
+                    }
+                    if (quantidadesSemValor > 0) {
+                        msg += `\n⚠ ${quantidadesSemValor} item(ns) com quantidade vazia na planilha. Eles aparecerão como "Não informada", e você poderá editar o valor na lista.`;
                     }
                     alert(msg);
 
@@ -892,14 +974,21 @@
                     trFilha.id = `produtos-carga-${c.id}`;
                     trFilha.className = 'hidden bg-slate-50 border-b border-slate-200';
                     
-                    let htmlItens = c.produtos.map(p => `
-                        <div class="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0 hover:bg-slate-100 px-2 rounded">
-                            <div class="flex space-x-3 items-center">
-                                <span class="text-xs font-mono text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">${p.codigo}</span>
-                                <span class="text-sm font-medium text-slate-700">${p.descricao}</span>
+                    let htmlItens = c.produtos.map((p, indice) => `
+                        <div class="flex items-center justify-between gap-3 py-1.5 border-b border-slate-100 last:border-0 hover:bg-slate-100 px-2 rounded">
+                            <div class="flex space-x-3 items-center min-w-0">
+                                <span class="text-xs font-mono text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">${escaparAtributoHTML(p.codigo)}</span>
+                                <span class="text-sm font-medium text-slate-700">${escaparAtributoHTML(p.descricao)}</span>
                             </div>
-                            <div class="text-sm font-bold text-indigo-600">
-                                ${p.qtd} <span class="text-xs font-normal text-slate-500">${p.unidade}</span>
+                            <div class="flex items-center gap-2 shrink-0 text-indigo-600">
+                                <input type="text" inputmode="decimal"
+                                    aria-label="Quantidade do produto ${escaparAtributoHTML(p.descricao)}"
+                                    title="Edite a quantidade e pressione Tab ou clique fora para salvar"
+                                    value="${escaparAtributoHTML(p.qtd === 0 || p.qtd === '0' ? '0' : (p.qtd || ''))}"
+                                    placeholder="Não informada"
+                                    onchange="atualizarQuantidadeProduto('${c.id}', ${indice}, this.value)"
+                                    class="w-28 px-2 py-1 bg-white border border-indigo-200 rounded text-sm font-bold text-right text-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <span class="text-xs font-normal text-slate-500">${escaparAtributoHTML(p.unidade)}</span>
                             </div>
                         </div>
                     `).join('');

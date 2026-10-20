@@ -261,6 +261,7 @@
                             <th class="py-2.5 px-3">Tipo de Carga</th>
                             <th class="py-2.5 px-3">UF de origem</th>
                             <th class="py-2.5 px-3">Pedido / Itens</th>
+                            <th class="py-2.5 px-3 text-right">Valor Total</th>
                             <th class="py-2.5 px-3">Cód. / Fornecedor</th>
                             <th class="py-2.5 px-3">Motorista</th>
                             <th class="py-2.5 px-3">Data do Embarque</th>
@@ -1611,6 +1612,71 @@
             return { porPedido, colunaEmbarque, colunaEntrega, invalidas, divergentes };
         }
 
+        // Valores monetarios do ERP: o valor de cada linha esta em VLLIQUIDO.
+        // Calcula-se sempre em centavos inteiros para evitar erros de arredondamento.
+        const FORMATADOR_REAIS = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        function localizarColunaValorLiquido(linhas) {
+            const colunas = [...new Set(linhas.slice(0, 30).flatMap(row => Object.keys(row)))];
+            const nomesPreferidos = ['VLLIQUIDO', 'VLRLIQUIDO', 'VALORLIQUIDO', 'VLLIQ', 'VLRLIQ', 'VALORLIQ'];
+            for (const preferido of nomesPreferidos) {
+                const coluna = colunas.find(nome => normalizarTexto(nome) === preferido);
+                if (coluna) return coluna;
+            }
+            // Aceita tambem espacos/pontuacao no titulo, mas nao valores unitarios.
+            return colunas.find(nome => {
+                const titulo = normalizarTexto(nome);
+                return /^(VL|VLR|VALOR).*LIQUIDO/.test(titulo) &&
+                    !/(UNIT|UNIDADE|PRECO|MEDIO|ESTIMADO)/.test(titulo);
+            }) || '';
+        }
+
+        function converterValorLiquidoParaCentavos(valor) {
+            if (typeof valor === 'number')
+                return Number.isFinite(valor) ? Math.round((valor + Number.EPSILON) * 100) : null;
+            if (valor == null || String(valor).trim() === '') return null;
+            let texto = String(valor).trim();
+            let negativo = /^\s*\(/.test(texto) && /\)\s*$/.test(texto);
+            texto = texto.replace(/^\s*\(/, '').replace(/\)\s*$/, '')
+                .replace(/R\$/gi, '').replace(/\s/g, '').replace(/[^0-9,.-]/g, '');
+            if (texto.startsWith('-')) { negativo = !negativo; texto = texto.slice(1); }
+            if (!texto || /[^0-9,.-]/.test(texto) || texto.includes('-')) return null;
+            const ultimaVirgula = texto.lastIndexOf(',');
+            const ultimoPonto = texto.lastIndexOf('.');
+            let normalizado;
+            if (ultimaVirgula >= 0 && ultimoPonto >= 0) {
+                // O ultimo separador e o decimal: 1.234,56 ou 1,234.56.
+                const decimal = ultimaVirgula > ultimoPonto ? ',' : '.';
+                const milhar = decimal === ',' ? '.' : ',';
+                normalizado = texto.split(milhar).join('').replace(decimal, '.');
+            } else if (ultimaVirgula >= 0 || ultimoPonto >= 0) {
+                const separador = ultimaVirgula >= 0 ? ',' : '.';
+                const partes = texto.split(separador);
+                if (partes.length > 2 && partes.slice(1).every(p => p.length === 3)) {
+                    normalizado = partes.join('');
+                } else if (partes.length === 2 && partes[1].length === 3 && partes[0].length <= 3) {
+                    // Agrupamento milhar, como 1.234 ou 1,234.
+                    normalizado = partes.join('');
+                } else if (partes.length === 2) {
+                    normalizado = partes[0] + '.' + partes[1];
+                } else return null;
+            } else normalizado = texto;
+            if (!/^\d+(?:\.\d{1,2})?$/.test(normalizado)) return null;
+            const numero = Number(normalizado);
+            if (!Number.isFinite(numero) || !Number.isSafeInteger(Math.round(numero * 100))) return null;
+            const centavos = Math.round(numero * 100);
+            return negativo ? -centavos : centavos;
+        }
+
+        function exibirValorTotalPedido(carga) {
+            if (carga.valorTotalIncompleto) return '<span class="text-amber-700 font-semibold" title="Algum VLLIQUIDO do pedido esta vazio ou invalido">Conferir valor</span>';
+            if (carga.valorTotalPedido === null || carga.valorTotalPedido === undefined || carga.valorTotalPedido === '') {
+                return '<span class="text-slate-400" title="Importe uma planilha com a coluna VLLIQUIDO">—</span>';
+            }
+            const centavos = converterValorLiquidoParaCentavos(carga.valorTotalPedido);
+            return centavos === null ? '—' : FORMATADOR_REAIS.format(centavos / 100);
+        }
+
         function importarPlanilhaDeItens(event) {
             if (limpezaGeralEmAndamento) {
                 event.target.value = '';
@@ -1633,6 +1699,7 @@
                     const json = escolhida.linhas;
                     const colunaQuantidade = escolherColunaQuantidade(json);
                     if (!colunaQuantidade) return;
+                    const colunaValorLiquido = localizarColunaValorLiquido(json);
                     const colunasFornecedor = acharColunasFornecedor(json);
                     const fornecedoresPorPedido = new Map();
                     const obterPedido = row => {
@@ -1665,6 +1732,9 @@
                     const cargasAlteradasNoArquivo = new Set();
                     const pedidosComEmbarque = new Set();
                     const pedidosComEntrega = new Set();
+                    const totaisEmCentavosPorPedido = new Map();
+                    const pedidosComValorInvalido = new Set();
+                    let valoresInvalidos = 0;
                     let produtosAdicionados = 0;
                     let quantidadesSemValor = 0;
                     let novasCargasCriadas = 0;
@@ -1723,13 +1793,41 @@
                         const qtd = lerQuantidadePlanilha(row, colunaQuantidade);
                         if (qtd === '') quantidadesSemValor++;
                         const unidade = extrairValorColuna(row, ['unidade', 'und', 'un', 'emb']) || 'CX';
-                        carga.produtos.push({ codigo, descricao, qtd, unidade });
+                        let valorLiquido = null;
+                        if (colunaValorLiquido) {
+                            const centavos = converterValorLiquidoParaCentavos(row[colunaValorLiquido]);
+                            if (centavos === null) {
+                                pedidosComValorInvalido.add(pedido);
+                                valoresInvalidos++;
+                            } else {
+                                const acumulado = (totaisEmCentavosPorPedido.get(pedido) || 0) + centavos;
+                                if (!Number.isSafeInteger(acumulado)) {
+                                    pedidosComValorInvalido.add(pedido);
+                                    valoresInvalidos++;
+                                } else {
+                                    totaisEmCentavosPorPedido.set(pedido, acumulado);
+                                    valorLiquido = centavos / 100;
+                                }
+                            }
+                        }
+                        carga.produtos.push({ codigo, descricao, qtd, unidade, ...(colunaValorLiquido ? { valorLiquido } : {}) });
                         cargasAlteradasNoArquivo.add(carga);
                         produtosAdicionados++;
                     });
                     if (!produtosAdicionados) {
                         alert('Nenhum item válido foi encontrado. Nenhuma carga foi modificada.');
                         return;
+                    }
+                    // Atualiza o total UMA VEZ por pedido, apos somar todas as linhas.
+                    // Em uma reimportacao, substitui o valor anterior, sem acumular de novo.
+                    // Quando falta a coluna VLLIQUIDO, preserva o total ja salvo.
+                    if (colunaValorLiquido) {
+                        for (const carga of cargasAlteradasNoArquivo) {
+                            const numeroPedido = String(carga.numeroPedido).trim();
+                            carga.valorTotalIncompleto = pedidosComValorInvalido.has(numeroPedido);
+                            carga.valorTotalPedido = carga.valorTotalIncompleto
+                                ? null : (totaisEmCentavosPorPedido.get(numeroPedido) || 0) / 100;
+                        }
                     }
                     salvarAlteracoesDeCargas([...cargasAlteradasNoArquivo]);
                     renderizar();
@@ -1749,9 +1847,12 @@
                         `• Fornecedor e UF preenchidos: ${identificadas}\n` +
                         `• Pedidos atualizados: ${pedidosAtualizados}\n` +
                         `• Itens: ${produtosAdicionados} (quantidades: ${colunaQuantidade})\n` +
+                        `• Valor total: ${colunaValorLiquido ? 'somado por pedido a partir de ' + colunaValorLiquido : 'coluna VLLIQUIDO nao encontrada'}\n` +
                         `• Data do Embarque (DTEMBARQUE): ${pedidosComEmbarque.size} pedido(s)\n` +
                         `• Prev. Chegada (DTENTREGA): ${pedidosComEntrega.size} pedido(s)\n` +
                         `• Novas cargas: ${novasCargasCriadas}`;
+                    if (!colunaValorLiquido) msg += '\n⚠ Coluna VLLIQUIDO nao encontrada: totais anteriores preservados; novos pedidos ficarao sem valor.';
+                    if (valoresInvalidos) msg += `\n⚠ ${valoresInvalidos} valor(es) VLLIQUIDO ausente(s)/invalido(s) em ${pedidosComValorInvalido.size} pedido(s). Esses totais aparecerao como Conferir valor.`;
                     if (!datasNaPlanilha.colunaEmbarque) msg += '\n⚠ Coluna DTEMBARQUE nao encontrada. Datas de embarque anteriores foram mantidas.';
                     if (!datasNaPlanilha.colunaEntrega) msg += '\n⚠ Coluna DTENTREGA nao encontrada. Previsoes de chegada anteriores foram mantidas.';
                     if (datasNaPlanilha.invalidas) msg += `\n⚠ ${datasNaPlanilha.invalidas} valor(es) de data invalido(s) ou nao reconhecido(s).`;
@@ -1907,7 +2008,7 @@
             tbody.innerHTML = '';
 
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="11" class="py-8 text-center text-slate-400">Nenhuma carga cadastrada ou encontrada. Importe uma planilha para começar!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" class="py-8 text-center text-slate-400">Nenhuma carga cadastrada ou encontrada. Importe uma planilha para começar!</td></tr>`;
                 return;
             }
 
@@ -1944,6 +2045,9 @@
                             </button>
                             <span class="font-bold ${temProdutos ? 'text-indigo-600' : 'text-slate-500'}">${c.numeroPedido || '-'}</span>
                         </div>
+                    </td>
+                    <td class="py-2.5 px-3 text-right whitespace-nowrap font-bold text-emerald-700 tabular-nums">
+                        ${exibirValorTotalPedido(c)}
                     </td>
                     <td class="py-2.5 px-3 font-bold ${c.fornecedor === 'A PREENCHER' ? 'text-amber-600 italic' : 'text-slate-900'}">
                         ${c.codigoFornecedor ? `<span class="text-[10px] text-indigo-700 mr-1">#${c.codigoFornecedor}</span>` : ''}${c.fornecedor || '-'}
@@ -1988,7 +2092,7 @@
                     `).join('');
 
                     trFilha.innerHTML = `
-                        <td colspan="11" class="p-4 bg-slate-100/50">
+                        <td colspan="12" class="p-4 bg-slate-100/50">
                             <div class="max-w-2xl bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
                                 <h4 class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider flex items-center space-x-2">
                                     <span>📦 ITENS DO PEDIDO:</span>
@@ -2217,7 +2321,9 @@
                 naPorta: cargaExistente ? cargaExistente.naPorta : false,
                 carregado: cargaExistente ? cargaExistente.carregado : false,
                 descarregada: cargaExistente ? (cargaExistente.descarregada || 'NÃO') : 'NÃO',
-                produtos: cargaExistente ? (cargaExistente.produtos || []) : []
+                produtos: cargaExistente ? (cargaExistente.produtos || []) : [],
+                valorTotalPedido: cargaExistente?.valorTotalPedido ?? null,
+                valorTotalIncompleto: Boolean(cargaExistente?.valorTotalIncompleto)
             };
 
             // No cadastro, o vínculo pelo código tem prioridade sobre escolhas divergentes.

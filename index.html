@@ -557,6 +557,10 @@
         const REF_CARGAS = db.ref('cargas');
         const CHAVE_BACKUP = 'cargas_logistica_backup_v3';
         const CHAVE_PENDENCIAS = 'cargas_logistica_pendencias_v3';
+        const CHAVE_GERACAO = 'cargas_logistica_geracao_v1';
+        // O marcador fica dentro de /cargas para que todas as sessões recebam
+        // cargas + marcador de exclusão no MESMO evento do Realtime Database.
+        const CHAVE_CONTROLE = '__geracao';
         let cargas = [];
         let modoVisao = 'tabela';
         let modoFiltroCalendario = 'mes';
@@ -585,6 +589,8 @@
             }
         }
 
+        let geracaoLocal = lerJSONLocal(CHAVE_GERACAO, null);
+        let geracaoServidor = null;
         let pendencias = lerJSONLocal(CHAVE_PENDENCIAS, {});
         if (!pendencias || typeof pendencias !== 'object' || Array.isArray(pendencias)) pendencias = {};
         versaoAlteracao = Object.values(pendencias).reduce((max, op) => Math.max(max, Number(op?.versao) || 0), 0);
@@ -622,15 +628,47 @@
         function cargaParaNuvem(carga) {
             const copia = { ...carga };
             delete copia.__firebaseKey;
-            // Faz uma cópia independente, evitando que edições posteriores alterem um lote em trânsito.
+            // Cada gravação pertence à geração atual. Um pedido salvo por um
+            // navegador desatualizado depois de uma limpeza não será exibido.
+            copia.__geracao = geracaoServidor;
             return JSON.parse(JSON.stringify(copia));
+        }
+
+        function obterGeracaoFirebase(valor) {
+            // Um texto simples, não um objeto, para versões antigas ignorarem
+            // este marcador sem apresentá-lo como se fosse uma carga.
+            const geracao = valor?.[CHAVE_CONTROLE];
+            return typeof geracao === 'string' && geracao ? geracao : 'legado';
         }
 
         function lerCargasFirebase(valor) {
             if (!valor || typeof valor !== 'object') return [];
             return Object.entries(valor)
-                .filter(([chave, item]) => item && typeof item === 'object' && !Array.isArray(item))
+                .filter(([chave, item]) => chave !== CHAVE_CONTROLE &&
+                    item && typeof item === 'object' && !Array.isArray(item) &&
+                    (item.__geracao || 'legado') === geracaoServidor)
                 .map(([chave, item]) => enriquecerCarga({ ...item, __firebaseKey: String(chave) }));
+        }
+
+        function descartarCopiaDeGeracaoAnterior() {
+            // Limpezas feitas em OUTROS computadores invalidam cópias e gravações
+            // pendentes deste navegador. Não permitir restauração automática.
+            pendencias = {};
+            versaoAlteracao = 0;
+            cargas = [];
+            cargasServidor = [];
+            modoRecuperacao = false;
+            backupParaRecuperar = null;
+            ignorarBackupVazio = true;
+            erroGravacao = '';
+            try {
+                localStorage.removeItem(CHAVE_BACKUP);
+                localStorage.removeItem(CHAVE_PENDENCIAS);
+                erroBackup = '';
+            } catch (erro) {
+                erroBackup = 'Não foi possível remover uma cópia local antiga. Confira as permissões do navegador.';
+                console.error('Falha ao limpar cópia local obsoleta:', erro);
+            }
         }
 
         function aplicarPendencias(base) {
@@ -662,7 +700,7 @@
             let tom = 'blue';
             let icone = '⏳';
             if (modoRecuperacao) {
-                mensagem = `ATENÇÃO: Firebase retornou 0 cargas, mas existe backup neste navegador com ${backupParaRecuperar.length} carga(s). Os dados locais foram mantidos; escolha recuperar ou manter a nuvem vazia.`;
+                mensagem = `O Firebase está sem pedidos. Há um backup local antigo com ${backupParaRecuperar.length} carga(s), mas ele NÃO será exibido nem restaurado automaticamente. Use Backup somente se quiser restaurá-lo.`;
                 tom = 'amber'; icone = '⚠️';
             } else if (firebaseErro) {
                 mensagem = `Falha ao ler o Firebase: ${firebaseErro}. Exibindo dados locais; verifique internet, configurações e regras do banco.`;
@@ -696,31 +734,45 @@
         }
 
         function aplicarSnapshotFirebase(valor) {
-            // Ignora snapshots intermediarios enquanto a limpeza geral esta em andamento.
             if (limpezaGeralEmAndamento) return;
+            const geracaoRecebida = obterGeracaoFirebase(valor);
+            const mudouGeracao = (geracaoLocal && geracaoLocal !== geracaoRecebida) ||
+                (!geracaoLocal && geracaoRecebida !== 'legado');
+            if (mudouGeracao) {
+                // O Firebase informou uma limpeza geral. Remover imediatamente os
+                // dados de outra geração, inclusive pendências ainda não enviadas.
+                descartarCopiaDeGeracaoAnterior();
+            }
+            geracaoServidor = geracaoRecebida;
+            geracaoLocal = geracaoRecebida;
+            salvarJSONLocal(CHAVE_GERACAO, geracaoRecebida);
             firebaseCarregado = true;
             firebaseErro = '';
             cargasServidor = lerCargasFirebase(valor);
-            const backup = obterBackupLocal();
-            const haDadosRemotos = cargasServidor.length > 0;
 
-            if (!haDadosRemotos && backup.length && !ignorarBackupVazio) {
-                // Um snapshot vazio não apaga automaticamente o único backup disponível.
-                modoRecuperacao = true;
-                backupParaRecuperar = backup;
-                cargas = aplicarPendencias(backup);
-            } else {
-                modoRecuperacao = false;
-                backupParaRecuperar = null;
-                cargas = aplicarPendencias(cargasServidor);
-                gravarBackupLocal();
-            }
+            // Quando a nuvem está vazia, os navegadores devem MOSTRAR ZERO.
+            // Backups locais podem ser recuperados EXPLICITAMENTE pelo usuário
+            // apenas na base legada, nunca após uma limpeza com marcador.
+            const backup = obterBackupLocal();
+            const podeRecuperar = geracaoRecebida === 'legado' &&
+                cargasServidor.length === 0 && backup.length > 0 &&
+                !ignorarBackupVazio && !Object.keys(pendencias).length;
+            modoRecuperacao = podeRecuperar;
+            backupParaRecuperar = podeRecuperar ? backup : null;
+
+            cargas = aplicarPendencias(cargasServidor);
+            if (!podeRecuperar) gravarBackupLocal();
             renderizar();
             atualizarIndicadorFirebase();
+            // Só enviar pendências DEPOIS de validar a geração recebida.
+            sincronizarPendencias();
         }
 
         function salvarAlteracoesDeCargas(lista) {
-            if (limpezaGeralEmAndamento) return;
+            if (limpezaGeralEmAndamento || !firebaseCarregado || !geracaoServidor) {
+                alert('Aguarde o carregamento dos pedidos do Firebase antes de salvar alterações.');
+                return;
+            }
             if (!lista.length) return;
             // Primeiro guarda a recuperação no navegador, inclusive se cair a conexão.
             lista.forEach(carga => {
@@ -745,7 +797,9 @@
         }
 
         async function sincronizarPendencias() {
-            if (limpezaGeralEmAndamento || !firebaseConectado || sincronizando || erroGravacao || firebaseErro) return;
+            if (limpezaGeralEmAndamento || !firebaseCarregado || !geracaoServidor ||
+                !firebaseConectado || sincronizando || erroGravacao || firebaseErro) return;
+            const geracaoDoLote = geracaoServidor;
             const lote = { ...pendencias };
             if (!Object.keys(lote).length) { atualizarIndicadorFirebase(); return; }
             sincronizando = true;
@@ -757,12 +811,16 @@
             try {
                 // UPDATE apenas nas chaves modificadas: não substitui a coleção completa.
                 await REF_CARGAS.update(alteracoes);
+                // Enquanto a requisição aguardava, outro usuário pode ter
+                // excluído tudo. Neste caso o lote antigo já foi invalidado.
+                if (geracaoDoLote !== geracaoServidor) return;
                 // Com confirmação do servidor, atualiza a última visão confirmada antes
                 // de remover a pendência, mesmo que o evento value chegue mais tarde.
                 const confirmadas = new Map(cargasServidor.map(c => [String(c.__firebaseKey), c]));
                 Object.entries(alteracoes).forEach(([chave, dados]) => {
                     if (dados === null) confirmadas.delete(chave);
-                    else confirmadas.set(chave, enriquecerCarga({ ...dados, __firebaseKey: chave }));
+                    else if ((dados.__geracao || 'legado') === geracaoServidor)
+                        confirmadas.set(chave, enriquecerCarga({ ...dados, __firebaseKey: chave }));
                 });
                 cargasServidor = Array.from(confirmadas.values());
                 if (cargasServidor.length > 0) {
@@ -846,9 +904,13 @@
             botaoCabecalho.disabled = true;
             botaoConfirmar.textContent = 'Excluindo...';
             try {
-                // Exclusao intencional da colecao INTEIRA, incluindo formatos antigos
-                // e chaves de pedidos que nao sejam reconhecidas pela tabela atual.
-                await REF_CARGAS.remove();
+                // Exclusão atômica: os pedidos são apagados, mas permanece um
+                // marcador de geração que todos os navegadores recebem pelo
+                // MESMO listener em /cargas. Nunca usar remove() puro aqui.
+                const novaGeracao = `limpeza_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+                await REF_CARGAS.set({ [CHAVE_CONTROLE]: novaGeracao });
+                geracaoServidor = novaGeracao;
+                geracaoLocal = novaGeracao;
 
                 cargas = [];
                 cargasServidor = [];
@@ -864,6 +926,7 @@
                     // Impede que backups e operacoes pendentes anteriores recriem os pedidos.
                     localStorage.removeItem(CHAVE_BACKUP);
                     localStorage.removeItem(CHAVE_PENDENCIAS);
+                    localStorage.setItem(CHAVE_GERACAO, JSON.stringify(novaGeracao));
                     erroBackup = '';
                 } catch (erroLocal) {
                     erroBackup = 'A limpeza foi confirmada na nuvem, mas nao foi possivel apagar o backup local. Verifique as permissoes do navegador.';
@@ -875,7 +938,7 @@
                 atualizarIndicadorFirebase();
                 document.getElementById('modal-limpar-todas').classList.add('hidden');
                 document.getElementById('modal-limpar-todas').classList.remove('flex');
-                alert('Todas as cargas e pedidos foram excluidos com sucesso do Firebase.');
+                alert('Todos os pedidos foram excluídos do Firebase. Os computadores com esta versão do sistema serão atualizados automaticamente.');
             } catch (erro) {
                 // Preserva backups e pedidos locais se nao houver confirmacao do servidor.
                 console.error('Falha na exclusao geral:', erro);
@@ -928,6 +991,11 @@
         }
 
         function importarBackupJSON(event) {
+            if (!firebaseCarregado) {
+                alert('Aguarde o carregamento do Firebase antes de restaurar um backup.');
+                event.target.value = '';
+                return;
+            }
             const arquivo = event.target.files[0];
             if (!arquivo) return;
             const reader = new FileReader();
@@ -960,7 +1028,9 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             preencherListasFornecedores();
-            cargas = aplicarPendencias(obterBackupLocal());
+            // Não exibir cargas do backup antes de verificar a base em nuvem.
+            // Outro usuário pode ter excluído todos os pedidos neste intervalo.
+            cargas = [];
             renderizar();
             atualizarIndicadorFirebase();
 
@@ -972,6 +1042,8 @@
                 }
                 atualizarIndicadorFirebase();
             });
+            // Listener permanente de TODOS os computadores, incluindo o
+            // marcador de exclusão e os registros do pedido num só snapshot.
             REF_CARGAS.on('value', snapshot => aplicarSnapshotFirebase(snapshot.val()), erro => {
                 firebaseErro = erro?.message || String(erro);
                 console.error('Firebase: falha ao carregar pedidos:', erro);
@@ -1274,7 +1346,7 @@
             }
             const file = event.target.files[0];
             if (!file) return;
-            if (!firebaseCarregado && cargas.length === 0) {
+            if (!firebaseCarregado) {
                 alert('Aguarde o carregamento inicial dos pedidos antes de importar, para evitar duplicações.');
                 event.target.value = '';
                 return;
@@ -1759,6 +1831,10 @@
         function salvarCarga(e) {
             e.preventDefault();
             if (limpezaGeralEmAndamento) return;
+            if (!firebaseCarregado) {
+                alert('Aguarde a sincronização com o Firebase antes de salvar.');
+                return;
+            }
             const id = document.getElementById('carga-id').value;
             let cargaExistente = id ? cargas.find(c => c.id === id) : null;
 

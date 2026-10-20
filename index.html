@@ -64,6 +64,13 @@
                 </details>
                 <input id="input-restaurar-backup" type="file" accept=".json,application/json" onchange="importarBackupJSON(event)" class="hidden">
 
+                <!-- LIMPEZA DE TODOS OS PEDIDOS, COM CONFIRMACAO -->
+                <button type="button" id="btn-limpar-todas" onclick="abrirConfirmacaoLimpeza()"
+                    title="Excluir todas as cargas e todos os pedidos do Firebase"
+                    class="px-3 py-2 bg-rose-700 hover:bg-rose-600 text-white text-xs font-semibold rounded-lg shadow-sm transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                    🗑️ Limpar todas as cargas
+                </button>
+
                 <!-- INPUT INVISÍVEL PARA ARQUIVO -->
                 <input type="file" id="input-importar-itens" accept=".xlsx, .xls, .csv" class="hidden" onchange="importarPlanilhaDeItens(event)">
                 
@@ -318,6 +325,29 @@
         </div>
     </div>
 
+    <!-- CONFIRMACAO EXPLICITA DA LIMPEZA GERAL -->
+    <div id="modal-limpar-todas" role="dialog" aria-modal="true" aria-labelledby="titulo-limpar-todas"
+         class="fixed inset-0 z-[80] hidden items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+        <div class="w-full max-w-md rounded-2xl border border-rose-200 bg-white shadow-2xl overflow-hidden">
+            <div class="bg-rose-50 border-b border-rose-100 px-6 py-5">
+                <h2 id="titulo-limpar-todas" class="font-bold text-lg text-rose-800">🗑️ Excluir todos os pedidos?</h2>
+            </div>
+            <div class="px-6 py-5 space-y-3 text-sm text-slate-700">
+                <p id="texto-limpar-todas" class="font-semibold text-slate-900"></p>
+                <p>Esta ação apaga todas as cargas e seus itens do Firebase e remove o backup automático deste navegador.</p>
+                <p class="text-rose-700 font-medium">A exclusão não poderá ser desfeita sem um arquivo de backup JSON.</p>
+                <button type="button" onclick="baixarBackupJSON()"
+                    class="text-xs font-semibold text-blue-700 hover:underline">💾 Baixar backup antes de excluir</button>
+            </div>
+            <div class="border-t border-slate-100 px-6 py-4 flex justify-end gap-3">
+                <button type="button" id="btn-cancelar-limpeza" onclick="fecharConfirmacaoLimpeza()"
+                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">Cancelar</button>
+                <button type="button" id="btn-confirmar-limpeza" onclick="confirmarLimpezaGeral()"
+                    class="px-4 py-2 rounded-lg bg-rose-700 text-white text-sm font-bold hover:bg-rose-600 disabled:opacity-60 disabled:cursor-not-allowed">Sim, excluir todos</button>
+            </div>
+        </div>
+    </div>
+
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
         // CATÁLOGO DE FORNECEDORES (código interno, nome e UF).
@@ -545,6 +575,7 @@
         let modoRecuperacao = false;
         let ignorarBackupVazio = false;
         let versaoAlteracao = 0;
+        let limpezaGeralEmAndamento = false;
 
         function lerJSONLocal(chave, fallback) {
             try {
@@ -668,6 +699,8 @@
         }
 
         function aplicarSnapshotFirebase(valor) {
+            // Ignora snapshots intermediarios enquanto a limpeza geral esta em andamento.
+            if (limpezaGeralEmAndamento) return;
             firebaseCarregado = true;
             firebaseErro = '';
             cargasServidor = lerCargasFirebase(valor);
@@ -690,6 +723,7 @@
         }
 
         function salvarAlteracoesDeCargas(lista) {
+            if (limpezaGeralEmAndamento) return;
             if (!lista.length) return;
             // Primeiro guarda a recuperação no navegador, inclusive se cair a conexão.
             lista.forEach(carga => {
@@ -703,6 +737,7 @@
         }
 
         function removerCargaPersistida(carga) {
+            if (limpezaGeralEmAndamento) return;
             if (!carga) return;
             const chave = chaveFirebaseCarga(carga);
             pendencias[chave] = { dados: null, versao: ++versaoAlteracao };
@@ -713,7 +748,7 @@
         }
 
         async function sincronizarPendencias() {
-            if (!firebaseConectado || sincronizando || erroGravacao || firebaseErro) return;
+            if (limpezaGeralEmAndamento || !firebaseConectado || sincronizando || erroGravacao || firebaseErro) return;
             const lote = { ...pendencias };
             if (!Object.keys(lote).length) { atualizarIndicadorFirebase(); return; }
             sincronizando = true;
@@ -764,6 +799,98 @@
             firebaseErro = '';
             sincronizarPendencias();
             atualizarIndicadorFirebase();
+        }
+
+        function abrirConfirmacaoLimpeza() {
+            if (limpezaGeralEmAndamento) return;
+            if (!firebaseCarregado || !firebaseConectado || firebaseErro) {
+                alert('Aguarde a conexao e o carregamento dos pedidos do Firebase antes de limpar todas as cargas.');
+                return;
+            }
+            if (sincronizando || Object.keys(pendencias).length || erroGravacao) {
+                alert('Existem alteracoes ainda nao sincronizadas. Aguarde o salvamento no Firebase ou corrija o erro de sincronizacao antes de excluir todas as cargas.');
+                return;
+            }
+            if (!cargas.length && !cargasServidor.length) {
+                alert('Nao ha cargas para excluir.');
+                return;
+            }
+            const total = cargasServidor.length;
+            document.getElementById('texto-limpar-todas').textContent =
+                `Deseja realmente excluir todos os ${total} pedido(s) cadastrados?`;
+            const modal = document.getElementById('modal-limpar-todas');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('btn-cancelar-limpeza').focus();
+        }
+
+        function fecharConfirmacaoLimpeza() {
+            if (limpezaGeralEmAndamento) return;
+            const modal = document.getElementById('modal-limpar-todas');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function confirmarLimpezaGeral() {
+            if (limpezaGeralEmAndamento) return;
+            if (!firebaseCarregado || !firebaseConectado || sincronizando ||
+                Object.keys(pendencias).length || erroGravacao || firebaseErro) {
+                fecharConfirmacaoLimpeza();
+                alert('Nao foi possivel iniciar a exclusao: verifique a conexao e a sincronizacao dos pedidos.');
+                return;
+            }
+            // So altera a tela e os backups depois da confirmacao do Firebase.
+            limpezaGeralEmAndamento = true;
+            const botaoConfirmar = document.getElementById('btn-confirmar-limpeza');
+            const botaoCancelar = document.getElementById('btn-cancelar-limpeza');
+            const botaoCabecalho = document.getElementById('btn-limpar-todas');
+            botaoConfirmar.disabled = true;
+            botaoCancelar.disabled = true;
+            botaoCabecalho.disabled = true;
+            botaoConfirmar.textContent = 'Excluindo...';
+            try {
+                // Exclusao intencional da colecao INTEIRA, incluindo formatos antigos
+                // e chaves de pedidos que nao sejam reconhecidas pela tabela atual.
+                await REF_CARGAS.remove();
+
+                cargas = [];
+                cargasServidor = [];
+                pendencias = {};
+                versaoAlteracao = 0;
+                modoRecuperacao = false;
+                backupParaRecuperar = null;
+                ignorarBackupVazio = true;
+                erroGravacao = '';
+                firebaseErro = '';
+
+                try {
+                    // Impede que backups e operacoes pendentes anteriores recriem os pedidos.
+                    localStorage.removeItem(CHAVE_BACKUP);
+                    localStorage.removeItem(CHAVE_PENDENCIAS);
+                    erroBackup = '';
+                } catch (erroLocal) {
+                    erroBackup = 'A limpeza foi confirmada na nuvem, mas nao foi possivel apagar o backup local. Verifique as permissoes do navegador.';
+                    console.error(erroBackup, erroLocal);
+                }
+
+                fecharModal();
+                renderizar();
+                atualizarIndicadorFirebase();
+                document.getElementById('modal-limpar-todas').classList.add('hidden');
+                document.getElementById('modal-limpar-todas').classList.remove('flex');
+                alert('Todas as cargas e pedidos foram excluidos com sucesso do Firebase.');
+            } catch (erro) {
+                // Preserva backups e pedidos locais se nao houver confirmacao do servidor.
+                console.error('Falha na exclusao geral:', erro);
+                alert(`Nao foi possivel confirmar a exclusao no Firebase: ${erro?.message || erro}. Os backups locais foram preservados.`);
+            } finally {
+                limpezaGeralEmAndamento = false;
+                botaoConfirmar.disabled = false;
+                botaoCancelar.disabled = false;
+                botaoCabecalho.disabled = false;
+                botaoConfirmar.textContent = 'Sim, excluir todos';
+                atualizarIndicadorFirebase();
+            }
         }
 
         function recuperarBackupLocal() {
@@ -1143,6 +1270,11 @@
         }
 
         function importarPlanilhaDeItens(event) {
+            if (limpezaGeralEmAndamento) {
+                event.target.value = '';
+                alert('Aguarde a conclusao da limpeza geral.');
+                return;
+            }
             const file = event.target.files[0];
             if (!file) return;
             if (!firebaseCarregado && cargas.length === 0) {
@@ -1639,6 +1771,7 @@
 
         function salvarCarga(e) {
             e.preventDefault();
+            if (limpezaGeralEmAndamento) return;
             const id = document.getElementById('carga-id').value;
             let cargaExistente = id ? cargas.find(c => c.id === id) : null;
 

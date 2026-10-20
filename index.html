@@ -124,6 +124,22 @@
             </div>
         </section>
 
+        <!-- INDICADORES DE FRETE E DE CARGA: CLIQUE PARA FILTRAR; COMBINÁVEIS -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Indicadores de frete e tipo de carga">
+            <button id="indicador-cif" type="button" onclick="alternarFiltroPainel('frete','CIF')" aria-pressed="false" class="text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-violet-400 transition">
+                <p class="text-xs font-bold text-violet-700 uppercase">🚚 FRETE CIF</p><p id="stat-cif" class="text-2xl font-bold text-violet-700">0</p>
+            </button>
+            <button id="indicador-fob" type="button" onclick="alternarFiltroPainel('frete','FOB')" aria-pressed="false" class="text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-amber-400 transition">
+                <p class="text-xs font-bold text-amber-700 uppercase">🚚 FRETE FOB</p><p id="stat-fob" class="text-2xl font-bold text-amber-700">0</p>
+            </button>
+            <button id="indicador-refrigerada" type="button" onclick="alternarFiltroPainel('carga','Refrigerada')" aria-pressed="false" class="text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-cyan-400 transition">
+                <p class="text-xs font-bold text-cyan-700 uppercase">❄️ REFRIGERADA</p><p id="stat-refrigerada" class="text-2xl font-bold text-cyan-700">0</p>
+            </button>
+            <button id="indicador-seca" type="button" onclick="alternarFiltroPainel('carga','Seca')" aria-pressed="false" class="text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-orange-400 transition">
+                <p class="text-xs font-bold text-orange-700 uppercase">📦 SECA</p><p id="stat-seca" class="text-2xl font-bold text-orange-700">0</p>
+            </button>
+        </section>
+
         <!-- CONTROLES E FILTROS -->
         <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex flex-wrap items-center gap-3 flex-1">
@@ -134,6 +150,14 @@
                     <option value="">Todos os Fretes</option>
                     <option value="FOB">FOB</option>
                     <option value="CIF">CIF</option>
+                </select>
+
+                <!-- FILTRO DE TIPO DE CARGA -->
+                <select id="filter-tipo-carga" onchange="aplicarFiltros()" aria-label="Filtrar tipo de carga" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer">
+                    <option value="">Todas as Cargas</option>
+                    <option value="Refrigerada">Refrigerada</option>
+                    <option value="Seca">Seca</option>
+                    <option value="Pendente">A confirmar</option>
                 </select>
 
                 <!-- FILTRO DE ORIGEM -->
@@ -169,6 +193,7 @@
                         <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
                             <th class="py-2.5 px-3 text-center">Ações</th>
                             <th class="py-2.5 px-3">Frete</th>
+                            <th class="py-2.5 px-3">Tipo de Carga</th>
                             <th class="py-2.5 px-3">UF de origem</th>
                             <th class="py-2.5 px-3">Pedido / Itens</th>
                             <th class="py-2.5 px-3">Cód. / Fornecedor</th>
@@ -236,12 +261,21 @@
             <form id="form-carga" onsubmit="salvarCarga(event)" class="p-6 space-y-4">
                 <input type="hidden" id="carga-id">
 
-                <div class="grid grid-cols-4 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo Frete</label>
                         <select id="carga-tipo-frete" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer font-bold">
+                            <option value="">Selecione</option>
                             <option value="FOB">FOB</option>
                             <option value="CIF">CIF</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo de Carga</label>
+                        <select id="carga-tipo-carga" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer font-bold">
+                            <option value="">A confirmar</option>
+                            <option value="Refrigerada">Refrigerada</option>
+                            <option value="Seca">Seca</option>
                         </select>
                     </div>
                     <div>
@@ -347,90 +381,91 @@
 
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
-        // CATÁLOGO DE FORNECEDORES (código interno, nome e UF).
+        // Cadastro por código, nome, UF, frete e tipo de carga, conforme planilha recebida.
+        // Código 5579: Tipo de Carga = "Fob" na planilha (inválido); requer confirmação.
         const FORNECEDORES = [
-            {"codigo": "3518", "nome": "FRIGORIFICO FRIELLA LTDA *", "uf": "PR"},
-            {"codigo": "1677", "nome": "LATICINIO MINAS GERAIS LTDA.", "uf": "MG"},
-            {"codigo": "22", "nome": "COOPERATIVA AGROINDUSTRIAL LAR*", "uf": "PR"},
-            {"codigo": "5557", "nome": "ROSA BRANCA DM INDUSTRIA, ATACADO, DISTRIBUIDOR & LOGISTICA", "uf": "TO"},
-            {"codigo": "28", "nome": "PALHA IND.E COM.DE ALIM.LTDA *", "uf": "PR"},
-            {"codigo": "4048", "nome": "AMC INDUSTRIA E COMERCIO DE ALIMENTOS LTDA", "uf": "PR"},
-            {"codigo": "13", "nome": "NUTRIZA AGROINDUSTRIAL DE ALIMENTOS S/A", "uf": "GO"},
-            {"codigo": "5322", "nome": "PLUSVAL AGROAVICOLA LTDA", "uf": "PR"},
-            {"codigo": "1680", "nome": "BEM BRASIL ALIMENTOS LTDA", "uf": "MG"},
-            {"codigo": "2032", "nome": "BEM BRASIL ALIMENTOS LTDA", "uf": "MG"},
-            {"codigo": "6778", "nome": "LFB COMERCIO DE CARNES LTDA", "uf": "TO"},
-            {"codigo": "3458", "nome": "CERRADO FOODS LTDA", "uf": "TO"},
-            {"codigo": "4912", "nome": "ATACADAO (CESAMAR) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO"},
-            {"codigo": "1250", "nome": "FUGINI ALIMENTOS LTDA", "uf": "GO"},
-            {"codigo": "4552", "nome": "CREMOLAT INDUSTRIA E COMERCIO DE LATICINIOS LTDA", "uf": "TO"},
-            {"codigo": "5484", "nome": "ATACADAO (TEOTONIO) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO"},
-            {"codigo": "5977", "nome": "ZANLORENZI BEBIDAS LTDA", "uf": "PR"},
-            {"codigo": "27", "nome": "N. ZEPPONE S.A.*", "uf": "PR"},
-            {"codigo": "4", "nome": "IND.E COM.DE CARNES E DERIVADOS BOI BRASIL", "uf": "TO"},
-            {"codigo": "2922", "nome": "REGRA DISTRIBUIDORA DE PRODUTOS - EIRELI", "uf": "TO"},
-            {"codigo": "5499", "nome": "COOPAVEL COOPERATIVA AGROINDUSTRIAL", "uf": "PR"},
-            {"codigo": "18", "nome": "COOPAVEL COOP.AGROINDUSTRIAL-FRISUINOS *", "uf": "PR"},
-            {"codigo": "3881", "nome": "LATICINIOS BELA VISTA", "uf": "GO"},
-            {"codigo": "5528", "nome": "SANTA HELENA INDUSTRIA DE ALIMENTOS S/A", "uf": "SP"},
-            {"codigo": "5576", "nome": "CEREALISTA SANTA FE LTDA", "uf": "TO"},
-            {"codigo": "3877", "nome": "GIGANTE CASH & CARRY COMERCIO DE ALIMENTOS LTDA.", "uf": "TO"},
-            {"codigo": "29", "nome": "W.W.SOARES", "uf": "TO"},
-            {"codigo": "5558", "nome": "INDUSTRIA E COMERCIO DE CARNES E DERIVADOS BOI BRASIL LTDA", "uf": "TO"},
-            {"codigo": "4388", "nome": "REDE BRASIL DISTRIBUICAO E LOGISTICA LTDA", "uf": "TO"},
-            {"codigo": "5071", "nome": "BEBIDAS GRASSI DO BRASIL LTDA", "uf": "SC"},
-            {"codigo": "6079", "nome": "JURUPINGA", "uf": "PR"},
-            {"codigo": "5618", "nome": "PRO-VAREJO DISTRIBUIDORA LTDA", "uf": "TO"},
-            {"codigo": "418", "nome": "COSTA SUL PESCADOS S/A *", "uf": "SC"},
-            {"codigo": "2865", "nome": "IND.COM.PRODS.ALIMS.CEPERA LTDA", "uf": "SP"},
-            {"codigo": "1466", "nome": "BRF-BRASIL FOODS S.A", "uf": "TO"},
-            {"codigo": "3028", "nome": "SO FRUTA ALIMENTOS LTDA", "uf": "SP"},
-            {"codigo": "4108", "nome": "PASTIFICIO SELMI SA", "uf": "SP"},
-            {"codigo": "4109", "nome": "ASSAI (CESAMAR) SENDAS DISTRIBUIDORA S/A", "uf": "TO"},
-            {"codigo": "6569", "nome": "FORT-FRIGO FOODS LTDA", "uf": "PR"},
-            {"codigo": "5174", "nome": "SCALON E CERCHI LTDA", "uf": "MG"},
-            {"codigo": "2906", "nome": "CRISTALCOPO DESCARTAVEIS S/A", "uf": "SC"},
-            {"codigo": "5318", "nome": "ITALIA COMERCIO E DISTRIB", "uf": "SC"},
-            {"codigo": "4865", "nome": "LIDERA INDUSTRIA E COMERCIO DE BEBIDAS LTDA", "uf": "SP"},
-            {"codigo": "2760", "nome": "ASSAI (TEOTONIO) SENDAS DISTRIBUIDORA S/A", "uf": "TO"},
-            {"codigo": "2106", "nome": "RIO BRANCO ALIMENTOS S/A", "uf": "MG"},
-            {"codigo": "534", "nome": "ESPETOS AUREA", "uf": "TO"},
-            {"codigo": "5912", "nome": "NATURAL PORK ALIMENTOS S.A.", "uf": "MT"},
-            {"codigo": "5684", "nome": "JAGUAFRANGOS INDUSTRIA E COMERCIO DE ALIMENTOS LTDA", "uf": "PR"},
-            {"codigo": "5595", "nome": "JALAPAO INDUSTRIA COMERCIO E DISTRIBUICAO DE ALIMENTOS LTDA", "uf": "TO"},
-            {"codigo": "5596", "nome": "DROGARIAS ULTRA POPULAR AB LTDA", "uf": "TO"},
-            {"codigo": "2986", "nome": "JANDIRA COM. DE PROD. ALIMENTICIOS LTDA", "uf": "TO"},
-            {"codigo": "5808", "nome": "MENDES ALIMENTOS LIMITADA", "uf": "GO"},
-            {"codigo": "4866", "nome": "ATACADAO (RODOVIARIA) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO"},
-            {"codigo": "4474", "nome": "CRISTALCOPO S/A", "uf": "PE"},
-            {"codigo": "6124", "nome": "ECOFISH INDUSTRIA DE PESCADOS LTDA", "uf": "MG"},
-            {"codigo": "6301", "nome": "FORTALEZA CEREALISTA LTDA", "uf": "TO"},
-            {"codigo": "6550", "nome": "ANICUNS S/A ALCOOL E DERIVADOS", "uf": "GO"},
-            {"codigo": "5579", "nome": "GOLCALVES E TORTOLA SA", "uf": "PR"},
-            {"codigo": "3144", "nome": "F PAULO NETO EIRELI EPP", "uf": "TO"},
-            {"codigo": "5625", "nome": "QUALICOCO LTDA", "uf": "AL"},
-            {"codigo": "2105", "nome": "RIO BRANCO ALIMENTOS S/A", "uf": "MG"},
-            {"codigo": "5614", "nome": "VALE VERDE EMPREEDIMENTOS AGRICOLAS LTDA", "uf": "GO"},
-            {"codigo": "5566", "nome": "NATURE INDUSTRIA COMERCIO E EXPORTACAO LTDA", "uf": "BA"},
-            {"codigo": "982", "nome": "SUPER MELLO ATACADISTA DE ALIMENTOS LTDA", "uf": "TO"},
-            {"codigo": "362", "nome": "CARLOS MAGNO MARTINS LEAL LTDA", "uf": "TO"},
-            {"codigo": "30", "nome": "W. W. SOARES", "uf": "TO"},
-            {"codigo": "5644", "nome": "FRIGORIFICO CALAFATE LTDA", "uf": "MG"},
-            {"codigo": "5556", "nome": "FRIGORIFICO JATOBA LTDA", "uf": "TO"},
-            {"codigo": "6269", "nome": "GOIASMINAS INDUSTRIA DE LATICINIOS LTDA", "uf": "GO"},
-            {"codigo": "6277", "nome": "ABATEDOURO COROAVES LTDA", "uf": "PR"},
-            {"codigo": "6225", "nome": "BEM FRUTTA ATACADO E DISTRIBUIDOR DE ALIMENTOS", "uf": "TO"},
-            {"codigo": "239", "nome": "BRF-BRASIL FOODS S.A", "uf": "GO"},
-            {"codigo": "5469", "nome": "C.VALE - COOPERATIVA AGROINDUSTRIAL", "uf": "PR"},
-            {"codigo": "4688", "nome": "PERNOD RICARD BRASIL INDUSTRIA E COMERCIO LTDA", "uf": "MG"},
-            {"codigo": "4645", "nome": "CELM - AQUICULTURA S/A", "uf": "CE"},
-            {"codigo": "4320", "nome": "ZANLORENZI BEBIDAS LTDA", "uf": "PR"},
-            {"codigo": "5471", "nome": "C.VALE - COOPERATIVA AGROINDUSTRIAL", "uf": "PR"},
-            {"codigo": "5402", "nome": "RIVIERA PESCADOS LTDA", "uf": "MG"},
-            {"codigo": "6041", "nome": "POLMAR", "uf": "TO"},
-            {"codigo": "5971", "nome": "BRF S.A.", "uf": "MT"},
-            {"codigo": "5562", "nome": "L' MARK INDUSTRIAL LTDA", "uf": "TO"},
-            {"codigo": "4063", "nome": "SANCHEZ CANO LTDA", "uf": "SP"}
+            {"codigo": "3518", "nome": "FRIGORIFICO FRIELLA LTDA *", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "1677", "nome": "LATICINIO MINAS GERAIS LTDA.", "uf": "MG", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "22", "nome": "COOPERATIVA AGROINDUSTRIAL LAR*", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "5557", "nome": "ROSA BRANCA DM INDUSTRIA, ATACADO, DISTRIBUIDOR & LOGISTICA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "28", "nome": "PALHA IND.E COM.DE ALIM.LTDA *", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": "Seca"},
+            {"codigo": "4048", "nome": "AMC INDUSTRIA E COMERCIO DE ALIMENTOS LTDA", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": "Seca"},
+            {"codigo": "13", "nome": "NUTRIZA AGROINDUSTRIAL DE ALIMENTOS S/A", "uf": "GO", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "5322", "nome": "PLUSVAL AGROAVICOLA LTDA", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "1680", "nome": "BEM BRASIL ALIMENTOS LTDA", "uf": "MG", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "2032", "nome": "BEM BRASIL ALIMENTOS LTDA", "uf": "MG", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "6778", "nome": "LFB COMERCIO DE CARNES LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "3458", "nome": "CERRADO FOODS LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "4912", "nome": "ATACADAO (CESAMAR) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "1250", "nome": "FUGINI ALIMENTOS LTDA", "uf": "GO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "4552", "nome": "CREMOLAT INDUSTRIA E COMERCIO DE LATICINIOS LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "5484", "nome": "ATACADAO (TEOTONIO) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5977", "nome": "ZANLORENZI BEBIDAS LTDA", "uf": "PR", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "27", "nome": "N. ZEPPONE S.A.*", "uf": "PR", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "4", "nome": "IND.E COM.DE CARNES E DERIVADOS BOI BRASIL", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "2922", "nome": "REGRA DISTRIBUIDORA DE PRODUTOS - EIRELI", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5499", "nome": "COOPAVEL COOPERATIVA AGROINDUSTRIAL", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "18", "nome": "COOPAVEL COOP.AGROINDUSTRIAL-FRISUINOS *", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "3881", "nome": "LATICINIOS BELA VISTA", "uf": "GO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5528", "nome": "SANTA HELENA INDUSTRIA DE ALIMENTOS S/A", "uf": "SP", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5576", "nome": "CEREALISTA SANTA FE LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "3877", "nome": "GIGANTE CASH & CARRY COMERCIO DE ALIMENTOS LTDA.", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "29", "nome": "W.W.SOARES", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "5558", "nome": "INDUSTRIA E COMERCIO DE CARNES E DERIVADOS BOI BRASIL LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "4388", "nome": "REDE BRASIL DISTRIBUICAO E LOGISTICA LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5071", "nome": "BEBIDAS GRASSI DO BRASIL LTDA", "uf": "SC", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "6079", "nome": "JURUPINGA", "uf": "PR", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5618", "nome": "PRO-VAREJO DISTRIBUIDORA LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "418", "nome": "COSTA SUL PESCADOS S/A *", "uf": "SC", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "2865", "nome": "IND.COM.PRODS.ALIMS.CEPERA LTDA", "uf": "SP", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "1466", "nome": "BRF-BRASIL FOODS S.A", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "3028", "nome": "SO FRUTA ALIMENTOS LTDA", "uf": "SP", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "4108", "nome": "PASTIFICIO SELMI SA", "uf": "SP", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "4109", "nome": "ASSAI (CESAMAR) SENDAS DISTRIBUIDORA S/A", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "6569", "nome": "FORT-FRIGO FOODS LTDA", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "5174", "nome": "SCALON E CERCHI LTDA", "uf": "MG", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "2906", "nome": "CRISTALCOPO DESCARTAVEIS S/A", "uf": "SC", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5318", "nome": "ITALIA COMERCIO E DISTRIB", "uf": "SC", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "4865", "nome": "LIDERA INDUSTRIA E COMERCIO DE BEBIDAS LTDA", "uf": "SP", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "2760", "nome": "ASSAI (TEOTONIO) SENDAS DISTRIBUIDORA S/A", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "2106", "nome": "RIO BRANCO ALIMENTOS S/A", "uf": "MG", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "534", "nome": "ESPETOS AUREA", "uf": "TO", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "5912", "nome": "NATURAL PORK ALIMENTOS S.A.", "uf": "MT", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "5684", "nome": "JAGUAFRANGOS INDUSTRIA E COMERCIO DE ALIMENTOS LTDA", "uf": "PR", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5595", "nome": "JALAPAO INDUSTRIA COMERCIO E DISTRIBUICAO DE ALIMENTOS LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5596", "nome": "DROGARIAS ULTRA POPULAR AB LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "2986", "nome": "JANDIRA COM. DE PROD. ALIMENTICIOS LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "5808", "nome": "MENDES ALIMENTOS LIMITADA", "uf": "GO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "4866", "nome": "ATACADAO (RODOVIARIA) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "4474", "nome": "CRISTALCOPO S/A", "uf": "PE", "tipoFrete": "FOB", "tipoCarga": "Seca"},
+            {"codigo": "6124", "nome": "ECOFISH INDUSTRIA DE PESCADOS LTDA", "uf": "MG", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "6301", "nome": "FORTALEZA CEREALISTA LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "6550", "nome": "ANICUNS S/A ALCOOL E DERIVADOS", "uf": "GO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5579", "nome": "GOLCALVES E TORTOLA SA", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": ""},
+            {"codigo": "3144", "nome": "F PAULO NETO EIRELI EPP", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "5625", "nome": "QUALICOCO LTDA", "uf": "AL", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "2105", "nome": "RIO BRANCO ALIMENTOS S/A", "uf": "MG", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "5614", "nome": "VALE VERDE EMPREEDIMENTOS AGRICOLAS LTDA", "uf": "GO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5566", "nome": "NATURE INDUSTRIA COMERCIO E EXPORTACAO LTDA", "uf": "BA", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "982", "nome": "SUPER MELLO ATACADISTA DE ALIMENTOS LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "362", "nome": "CARLOS MAGNO MARTINS LEAL LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "30", "nome": "W. W. SOARES", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "5644", "nome": "FRIGORIFICO CALAFATE LTDA", "uf": "MG", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "5556", "nome": "FRIGORIFICO JATOBA LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "6269", "nome": "GOIASMINAS INDUSTRIA DE LATICINIOS LTDA", "uf": "GO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "6277", "nome": "ABATEDOURO COROAVES LTDA", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "6225", "nome": "BEM FRUTTA ATACADO E DISTRIBUIDOR DE ALIMENTOS", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "239", "nome": "BRF-BRASIL FOODS S.A", "uf": "GO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "5469", "nome": "C.VALE - COOPERATIVA AGROINDUSTRIAL", "uf": "PR", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "4688", "nome": "PERNOD RICARD BRASIL INDUSTRIA E COMERCIO LTDA", "uf": "MG", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "4645", "nome": "CELM - AQUICULTURA S/A", "uf": "CE", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "4320", "nome": "ZANLORENZI BEBIDAS LTDA", "uf": "PR", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "5471", "nome": "C.VALE - COOPERATIVA AGROINDUSTRIAL", "uf": "PR", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "5402", "nome": "RIVIERA PESCADOS LTDA", "uf": "MG", "tipoFrete": "FOB", "tipoCarga": "Refrigerada"},
+            {"codigo": "6041", "nome": "POLMAR", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "5971", "nome": "BRF S.A.", "uf": "MT", "tipoFrete": "CIF", "tipoCarga": "Refrigerada"},
+            {"codigo": "5562", "nome": "L' MARK INDUSTRIAL LTDA", "uf": "TO", "tipoFrete": "CIF", "tipoCarga": "Seca"},
+            {"codigo": "4063", "nome": "SANCHEZ CANO LTDA", "uf": "SP", "tipoFrete": "CIF", "tipoCarga": "Seca"}
         ];
 
         const fornecedoresPorCodigo = new Map(FORNECEDORES.map(f => [f.codigo, f]));
@@ -469,6 +504,35 @@
             return candidatos.length === 1 ? candidatos[0] : null;
         }
 
+        // Códigos prevalecem; nomes iguais podem ter mais de um frete (ex.: C.VALE).
+        // Só classificar por nome quando TODOS os códigos encontrados concordarem.
+        function classificacaoPorFornecedor(codigo, nome) {
+            const exato = fornecedoresPorCodigo.get(padronizarCodigoFornecedor(codigo));
+            if (exato) return { tipoFrete: exato.tipoFrete, tipoCarga: exato.tipoCarga, codigoValido: true };
+            const encontrados = fornecedoresComMesmoNome(nome);
+            const comum = campo => encontrados.length && encontrados.every(f => f[campo] === encontrados[0][campo])
+                ? encontrados[0][campo] : '';
+            return { tipoFrete: comum('tipoFrete'), tipoCarga: comum('tipoCarga'), codigoValido: false };
+        }
+
+        function normalizarTipoFrete(valor) {
+            const v = String(valor || '').trim().toUpperCase();
+            return v === 'CIF' || v === 'FOB' ? v : '';
+        }
+        function normalizarTipoCarga(valor) {
+            const v = normalizarTexto(valor);
+            return v === 'REFRIGERADA' || v === 'REFRIGERADO' ? 'Refrigerada'
+                : v === 'SECA' || v === 'SECO' ? 'Seca' : '';
+        }
+
+        function tiposParaExibicao(c) {
+            const vinculo = classificacaoPorFornecedor(c.codigoFornecedor, c.fornecedor);
+            return {
+                tipoFrete: vinculo.tipoFrete || normalizarTipoFrete(c.tipoFrete),
+                tipoCarga: vinculo.tipoCarga || normalizarTipoCarga(c.tipoCarga)
+            };
+        }
+
         function ufPorNomeFornecedor(nome) {
             const encontrados = fornecedoresComMesmoNome(nome);
             return encontrados.length && encontrados.every(f => f.uf === encontrados[0].uf)
@@ -478,19 +542,25 @@
         function enriquecerCarga(c) {
             const porCodigo = fornecedoresPorCodigo.get(padronizarCodigoFornecedor(c.codigoFornecedor));
             const f = porCodigo || localizarFornecedor('', c.fornecedor, c.origem);
+            const vinculo = classificacaoPorFornecedor(c.codigoFornecedor, c.fornecedor);
             if (!f) {
                 const ufNome = ufPorNomeFornecedor(c.fornecedor);
-                return ufNome && !c.origem ? { ...c, origem: ufNome } : c;
+                return {
+                    ...c,
+                    origem: c.origem || ufNome || '',
+                    tipoFrete: vinculo.tipoFrete || normalizarTipoFrete(c.tipoFrete),
+                    tipoCarga: vinculo.tipoCarga || normalizarTipoCarga(c.tipoCarga)
+                };
             }
             const nomeAnterior = normalizarTexto(c.fornecedor);
             const vazio = !nomeAnterior || nomeAnterior === 'APREENCHER';
             return {
                 ...c,
-                // O código do cadastro é a chave mais confiável: corrigir a UF, inclusive
-                // se o pedido antigo veio com PR por padrão.
                 codigoFornecedor: porCodigo ? porCodigo.codigo : (c.codigoFornecedor || f.codigo),
                 fornecedor: porCodigo || vazio ? f.nome : c.fornecedor,
-                origem: porCodigo ? f.uf : (c.origem || f.uf)
+                origem: porCodigo ? f.uf : (c.origem || f.uf),
+                tipoFrete: porCodigo ? f.tipoFrete : (vinculo.tipoFrete || normalizarTipoFrete(c.tipoFrete)),
+                tipoCarga: (porCodigo && f.tipoCarga) ? f.tipoCarga : (vinculo.tipoCarga || normalizarTipoCarga(c.tipoCarga))
             };
         }
 
@@ -507,6 +577,8 @@
             if (definirCodigo) document.getElementById('carga-codigo-fornecedor').value = f.codigo;
             document.getElementById('carga-fornecedor').value = f.nome;
             document.getElementById('carga-origem').value = f.uf;
+            document.getElementById('carga-tipo-frete').value = f.tipoFrete;
+            document.getElementById('carga-tipo-carga').value = f.tipoCarga;
             aoMudarOrigem();
         }
 
@@ -533,6 +605,9 @@
                     document.getElementById('carga-origem').value = ufCorrespondente;
                     aoMudarOrigem();
                 }
+                const tipoPorNome = classificacaoPorFornecedor('', nome);
+                if (tipoPorNome.tipoFrete) document.getElementById('carga-tipo-frete').value = tipoPorNome.tipoFrete;
+                if (tipoPorNome.tipoCarga) document.getElementById('carga-tipo-carga').value = tipoPorNome.tipoCarga;
             }
         }
 
@@ -1260,6 +1335,10 @@
                 atribuir('codigoFornecedor', cadastroCodigo.codigo);
                 atribuir('fornecedor', cadastroCodigo.nome);
                 atribuir('origem', cadastroCodigo.uf);
+                atribuir('tipoFrete', cadastroCodigo.tipoFrete);
+                // Código 5579 está sem tipo de carga válido na fonte.
+                if (cadastroCodigo.tipoCarga) atribuir('tipoCarga', cadastroCodigo.tipoCarga);
+                // Se a planilha-mestre estiver sem tipo válido, preservar correções manuais.
                 return modificou;
             }
             if (dados.nome && normalizarTexto(dados.nome) !== 'APREENCHER') {
@@ -1274,6 +1353,13 @@
             if (cadastroAnterior) {
                 atribuir('fornecedor', cadastroAnterior.nome);
                 atribuir('origem', cadastroAnterior.uf);
+                atribuir('tipoFrete', cadastroAnterior.tipoFrete);
+                if (cadastroAnterior.tipoCarga) atribuir('tipoCarga', cadastroAnterior.tipoCarga);
+                // Preservar classificação manual em fornecedores sem tipo válido na planilha.
+            } else {
+                const vinculoNome = classificacaoPorFornecedor('', carga.fornecedor);
+                if (vinculoNome.tipoFrete) atribuir('tipoFrete', vinculoNome.tipoFrete);
+                if (vinculoNome.tipoCarga) atribuir('tipoCarga', vinculoNome.tipoCarga);
             }
             return modificou;
         }
@@ -1399,10 +1485,12 @@
                         const ufPlanilha = extrairValorColuna(row, ['estadoorigem', 'uforigem', 'uf', 'estado']).toUpperCase();
                         if (!carga) {
                             const motorista = extrairValorColuna(row, ['motorista', 'mot', 'condutor', 'transporte']) || 'A PREENCHER';
-                            const tipoFrete = extrairValorColuna(row, ['frete', 'tipo', 'cif', 'fob']).toUpperCase().includes('CIF') ? 'CIF' : 'FOB';
+                            // Jamais presumir FOB quando o tipo de frete não vier na planilha.
+                            const tipoFrete = normalizarTipoFrete(extrairValorColuna(row, ['tipodefrete', 'frete']));
+                            const tipoCarga = normalizarTipoCarga(extrairValorColuna(row, ['tipodecarga', 'classificacaocarga']));
                             carga = {
                                 id: Date.now().toString() + Math.random().toString(36).slice(2, 8),
-                                tipoFrete,
+                                tipoFrete, tipoCarga,
                                 origem: '', codigoFornecedor: '',
                                 refHoras: '48:00:00', numeroPedido: pedido,
                                 fornecedor: 'A PREENCHER', motorista,
@@ -1415,6 +1503,8 @@
                         }
                         if (!pedidosProcessadosNoArquivo.has(pedido)) {
                             const alterou = aplicarDadosFornecedorNaCarga(carga, dados, ufPlanilha);
+                            const tipoDaLinha = normalizarTipoCarga(extrairValorColuna(row, ['tipodecarga', 'classificacaocarga']));
+                            if (!carga.tipoCarga && tipoDaLinha && !fornecedoresPorCodigo.has(padronizarCodigoFornecedor(carga.codigoFornecedor))) carga.tipoCarga = tipoDaLinha;
                             if (alterou) pedidosAtualizados++;
                             carga.produtos = [];
                             pedidosProcessadosNoArquivo.add(pedido);
@@ -1443,6 +1533,10 @@
                     const pendentes = [...cargasAlteradasNoArquivo].filter(c =>
                         !c.fornecedor || normalizarTexto(c.fornecedor) === 'APREENCHER' || !c.origem
                     ).map(c => c.numeroPedido);
+                    const semClassificacao = [...cargasAlteradasNoArquivo].filter(c => {
+                        const tipos = tiposParaExibicao(c);
+                        return !tipos.tipoFrete || !tipos.tipoCarga;
+                    }).map(c => c.numeroPedido);
                     let msg = `Importação realizada!\n` +
                         `• Aba: ${escolhida.nome}\n` +
                         `• Pedidos: ${cargasAlteradasNoArquivo.size}\n` +
@@ -1451,6 +1545,7 @@
                         `• Itens: ${produtosAdicionados} (quantidades: ${colunaQuantidade})\n` +
                         `• Novas cargas: ${novasCargasCriadas}`;
                     if (pendentes.length) msg += `\n⚠ Sem fornecedor/UF: ${pendentes.length} pedido(s) (${pendentes.slice(0, 7).join(', ')}${pendentes.length > 7 ? ', ...' : ''}). Confira se a planilha possui código/nome do fornecedor.`;
+                    if (semClassificacao.length) msg += `\n⚠ ${semClassificacao.length} pedido(s) aguardando frete ou tipo de carga (${semClassificacao.slice(0, 6).join(', ')}). Confira código do fornecedor e cadastro.`;
                     if (quantidadesSemValor) msg += `\n⚠ ${quantidadesSemValor} quantidade(s) em branco.`;
                     alert(msg + '\n\nAs alterações serão sincronizadas em segundo plano. Um aviso aparecerá se ocorrer algum problema.');
                 } catch (error) {
@@ -1524,10 +1619,40 @@
 
         function aplicarFiltros() { renderizar(); }
 
+        function alternarFiltroPainel(categoria, valor) {
+            const seletor = document.getElementById(categoria === 'frete' ? 'filter-tipo-frete' : 'filter-tipo-carga');
+            seletor.value = seletor.value === valor ? '' : valor;
+            aplicarFiltros();
+        }
+
+        function atualizarIndicadoresTipo(filtradas) {
+            let cif = 0, fob = 0, refrigerada = 0, seca = 0;
+            filtradas.forEach(c => {
+                const tipo = tiposParaExibicao(c);
+                if (tipo.tipoFrete === 'CIF') cif++;
+                if (tipo.tipoFrete === 'FOB') fob++;
+                if (tipo.tipoCarga === 'Refrigerada') refrigerada++;
+                if (tipo.tipoCarga === 'Seca') seca++;
+            });
+            [['cif',cif],['fob',fob],['refrigerada',refrigerada],['seca',seca]].forEach(([nome,quantidade]) => {
+                document.getElementById('stat-' + nome).textContent = quantidade;
+            });
+            const filtroFrete = document.getElementById('filter-tipo-frete').value;
+            const filtroCarga = document.getElementById('filter-tipo-carga').value;
+            [['cif',filtroFrete==='CIF'],['fob',filtroFrete==='FOB'],
+             ['refrigerada',filtroCarga==='Refrigerada'],['seca',filtroCarga==='Seca']].forEach(([nome,ativo]) => {
+                const elemento = document.getElementById('indicador-' + nome);
+                elemento.setAttribute('aria-pressed',String(ativo));
+                elemento.classList.toggle('ring-2', ativo);
+                elemento.classList.toggle('ring-blue-500', ativo);
+            });
+        }
+
         function obterCargasFiltradas() {
             const busca = (document.getElementById('filter-search').value || '').toLowerCase();
             const origem = document.getElementById('filter-origem').value;
             const tipoFrete = document.getElementById('filter-tipo-frete').value;
+            const tipoCarga = document.getElementById('filter-tipo-carga').value;
             const status = document.getElementById('filter-status').value;
 
             return cargas.filter(c => {
@@ -1536,18 +1661,21 @@
                                 || (c.motorista || '').toLowerCase().includes(busca)
                                 || (c.numeroPedido || '').toLowerCase().includes(busca);
                 const matchOrigem = !origem || c.origem === origem;
-                const matchFrete = !tipoFrete || (c.tipoFrete || 'FOB') === tipoFrete;
+                const tipos = tiposParaExibicao(c);
+                const matchFrete = !tipoFrete || tipos.tipoFrete === tipoFrete;
+                const matchCarga = !tipoCarga || (tipoCarga === 'Pendente' ? !tipos.tipoCarga : tipos.tipoCarga === tipoCarga);
                 
                 let statusCarga = 'transito';
                 if (c.descarregada === 'SIM') statusCarga = 'descarregada';
                 else if (c.naPorta) statusCarga = 'porta';
 
-                return matchBusca && matchOrigem && matchFrete && (!status || statusCarga === status);
+                return matchBusca && matchOrigem && matchFrete && matchCarga && (!status || statusCarga === status);
             });
         }
 
         function renderizar() {
             const filtradas = obterCargasFiltradas();
+            atualizarIndicadoresTipo(filtradas);
             
             document.getElementById('stat-total').innerText = cargas.length;
             document.getElementById('stat-transito').innerText = cargas.filter(c => c.descarregada !== 'SIM' && !c.naPorta).length;
@@ -1566,15 +1694,18 @@
             tbody.innerHTML = '';
 
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">Nenhuma carga cadastrada ou encontrada. Importe uma planilha para começar!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="py-8 text-center text-slate-400">Nenhuma carga cadastrada ou encontrada. Importe uma planilha para começar!</td></tr>`;
                 return;
             }
 
             filtradas.forEach(c => {
                 const temProdutos = c.produtos && c.produtos.length > 0;
                 const rowBgClass = c.descarregada === 'SIM' ? 'bg-emerald-50/70 hover:bg-emerald-100/70' : 'hover:bg-slate-50';
-                const tipoFreteAtual = c.tipoFrete || 'FOB';
-                const badgeFreteClass = tipoFreteAtual === 'CIF' ? 'bg-purple-100 text-purple-800 border-purple-200' : 'bg-amber-100 text-amber-800 border-amber-200';
+                const tipos = tiposParaExibicao(c);
+                const tipoFreteAtual = tipos.tipoFrete || 'A confirmar';
+                const tipoCargaAtual = tipos.tipoCarga || 'A confirmar';
+                const badgeFreteClass = tipoFreteAtual === 'CIF' ? 'bg-purple-100 text-purple-800 border-purple-200' : tipoFreteAtual === 'FOB' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-500 border-slate-200';
+                const badgeCargaClass = tipoCargaAtual === 'Refrigerada' ? 'bg-cyan-100 text-cyan-800 border-cyan-200' : tipoCargaAtual === 'Seca' ? 'bg-orange-100 text-orange-800 border-orange-200' : 'bg-slate-100 text-slate-500 border-slate-200';
 
                 const trPrincipal = document.createElement('tr');
                 trPrincipal.className = `${rowBgClass} transition border-b border-slate-100`;
@@ -1584,6 +1715,9 @@
                     </td>
                     <td class="py-2.5 px-3">
                         <span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${badgeFreteClass}">${tipoFreteAtual}</span>
+                    </td>
+                    <td class="py-2.5 px-3">
+                        <span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${badgeCargaClass}">${tipoCargaAtual === 'Refrigerada' ? '❄️ ' : tipoCargaAtual === 'Seca' ? '📦 ' : ''}${tipoCargaAtual}</span>
                     </td>
                     <td class="py-2.5 px-3 font-semibold text-slate-800">
                         <span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-200">${c.origem || 'UF?'}</span>
@@ -1641,7 +1775,7 @@
                     `).join('');
 
                     trFilha.innerHTML = `
-                        <td colspan="10" class="p-4 bg-slate-100/50">
+                        <td colspan="11" class="p-4 bg-slate-100/50">
                             <div class="max-w-2xl bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
                                 <h4 class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider flex items-center space-x-2">
                                     <span>📦 ITENS DO PEDIDO:</span>
@@ -1720,6 +1854,7 @@
                 cell.className = "bg-white border border-slate-200 rounded-lg min-h-[120px] p-2 flex flex-col justify-between shadow-xs hover:border-blue-300 transition";
 
                 let htmlCargas = cargasDoDia.map(c => {
+                    const tipos = tiposParaExibicao(c);
                     let badgeColor = 'bg-emerald-50 text-emerald-900 border-emerald-300';
                     let headerBadge = 'text-emerald-700 bg-emerald-100';
 
@@ -1739,7 +1874,8 @@
                             <div class="flex justify-between items-center mb-1">
                                 <span class="font-bold text-slate-900">#${c.numeroPedido || 'S/N'}</span>
                                 <div class="flex space-x-1">
-                                    <span class="text-[9px] font-bold px-1 py-0.5 rounded bg-slate-200 text-slate-800">${c.tipoFrete || 'FOB'}</span>
+                                    <span class="text-[9px] font-bold px-1 py-0.5 rounded bg-slate-200 text-slate-800">${tipos.tipoFrete || 'A confirmar'}</span>
+                                    <span class="text-[9px] font-bold px-1 py-0.5 rounded bg-cyan-50 text-cyan-900">${tipos.tipoCarga || 'A confirmar'}</span>
                                     <span class="text-[9px] font-bold px-1 py-0.5 rounded ${headerBadge}">${c.origem}</span>
                                 </div>
                             </div>
@@ -1786,7 +1922,8 @@
             document.getElementById('modal-title').innerText = 'Nova Carga';
             document.getElementById('form-carga').reset();
             document.getElementById('carga-id').value = '';
-            document.getElementById('carga-tipo-frete').value = 'FOB';
+            document.getElementById('carga-tipo-frete').value = '';
+            document.getElementById('carga-tipo-carga').value = '';
             document.getElementById('carga-origem').value = '';
             document.getElementById('btn-excluir-carga').classList.add('hidden');
             aoMudarOrigem();
@@ -1801,7 +1938,8 @@
 
             document.getElementById('modal-title').innerText = 'Editar Carga';
             document.getElementById('carga-id').value = c.id;
-            document.getElementById('carga-tipo-frete').value = c.tipoFrete || 'FOB';
+            document.getElementById('carga-tipo-frete').value = tiposParaExibicao(c).tipoFrete || '';
+            document.getElementById('carga-tipo-carga').value = tiposParaExibicao(c).tipoCarga || '';
             document.getElementById('carga-origem').value = c.origem;
             document.getElementById('carga-ref-horas').value = c.refHoras || '48:00:00';
             document.getElementById('carga-pedido').value = c.numeroPedido || '';
@@ -1841,7 +1979,8 @@
             const nova = {
                 id: id || Date.now().toString(),
                 __firebaseKey: cargaExistente?.__firebaseKey || undefined,
-                tipoFrete: document.getElementById('carga-tipo-frete').value || 'FOB',
+                tipoFrete: document.getElementById('carga-tipo-frete').value,
+                tipoCarga: document.getElementById('carga-tipo-carga').value,
                 origem: document.getElementById('carga-origem').value,
                 ...(cargaExistente && cargaExistente.cidadeOrigem ? { cidadeOrigem: cargaExistente.cidadeOrigem } : {}),
                 codigoFornecedor: document.getElementById('carga-codigo-fornecedor').value.trim(),
@@ -1859,6 +1998,14 @@
                 produtos: cargaExistente ? (cargaExistente.produtos || []) : []
             };
 
+            // No cadastro, o vínculo pelo código tem prioridade sobre escolhas divergentes.
+            const conhecido = fornecedoresPorCodigo.get(padronizarCodigoFornecedor(nova.codigoFornecedor));
+            if (conhecido) {
+                nova.fornecedor = conhecido.nome;
+                nova.origem = conhecido.uf;
+                nova.tipoFrete = conhecido.tipoFrete;
+                if (conhecido.tipoCarga) nova.tipoCarga = conhecido.tipoCarga;
+            }
             if (id) {
                 const idx = cargas.findIndex(c => c.id === id);
                 if (idx !== -1) cargas[idx] = nova;

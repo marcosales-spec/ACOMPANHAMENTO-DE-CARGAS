@@ -68,6 +68,22 @@
 
     <main class="flex-1 max-w-[98%] w-full mx-auto px-2 py-6 space-y-6">
 
+        <!-- Persistência: status real da nuvem e cópia local de emergência -->
+        <section id="sync-banner" role="status" aria-live="polite" class="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs shadow-sm">
+            <div class="flex items-center gap-2 min-w-0">
+                <span id="sync-symbol" class="text-base">⏳</span>
+                <span id="sync-text" class="font-semibold">Conectando ao Firebase. Verificando os pedidos salvos...</span>
+            </div>
+            <div class="flex flex-wrap gap-2 items-center">
+                <button type="button" id="btn-recuperar-local" onclick="recuperarBackupLocal()" class="hidden px-2.5 py-1.5 bg-amber-600 text-white rounded font-semibold hover:bg-amber-700">Recuperar backup local</button>
+                <button type="button" id="btn-usar-nuvem-vazia" onclick="ignorarBackupLocal()" class="hidden px-2.5 py-1.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold">Manter nuvem vazia</button>
+                <button type="button" onclick="tentarSincronizar()" id="btn-tentar-sync" class="hidden px-2.5 py-1.5 bg-blue-600 text-white rounded font-semibold">Tentar sincronizar</button>
+                <button type="button" onclick="baixarBackupJSON()" class="px-2.5 py-1.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-50">⬇ Backup JSON</button>
+                <button type="button" onclick="document.getElementById('input-restaurar-backup').click()" class="px-2.5 py-1.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-50">⬆ Importar backup</button>
+                <input id="input-restaurar-backup" type="file" accept=".json,application/json" onchange="importarBackupJSON(event)" class="hidden">
+            </div>
+        </section>
+
         <!-- DASHBOARD (CARDS SUPERIORES) -->
         <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
@@ -510,25 +526,333 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // Cada pedido é gravado individualmente no Realtime Database. Nunca se usa
+        // set(cargas) na raiz: isso poderia apagar as alterações de outras sessões.
+        const REF_CARGAS = db.ref('cargas');
+        const CHAVE_BACKUP = 'cargas_logistica_backup_v3';
+        const CHAVE_PENDENCIAS = 'cargas_logistica_pendencias_v3';
         let cargas = [];
-        let modoVisao = 'tabela'; // 'tabela' ou 'calendario'
-        let modoFiltroCalendario = 'mes'; // 'mes', 'semana_atual', 'proxima_semana', 'semana_anterior'
+        let modoVisao = 'tabela';
+        let modoFiltroCalendario = 'mes';
         let dataCalendarioAtual = new Date();
+        let firebaseCarregado = false;
+        let firebaseConectado = false;
+        let firebaseErro = '';
+        let erroBackup = '';
+        let sincronizando = false;
+        let erroGravacao = '';
+        let cargasServidor = [];
+        let backupParaRecuperar = null;
+        let modoRecuperacao = false;
+        let ignorarBackupVazio = false;
+        let versaoAlteracao = 0;
+
+        function lerJSONLocal(chave, fallback) {
+            try {
+                const valor = localStorage.getItem(chave);
+                return valor ? JSON.parse(valor) : fallback;
+            } catch (erro) {
+                console.warn('Não foi possível ler backup local:', erro);
+                erroBackup = 'Armazenamento local indisponível. Baixe um backup JSON após salvar.';
+                return fallback;
+            }
+        }
+
+        let pendencias = lerJSONLocal(CHAVE_PENDENCIAS, {});
+        if (!pendencias || typeof pendencias !== 'object' || Array.isArray(pendencias)) pendencias = {};
+        versaoAlteracao = Object.values(pendencias).reduce((max, op) => Math.max(max, Number(op?.versao) || 0), 0);
+
+        function salvarJSONLocal(chave, valor) {
+            try {
+                localStorage.setItem(chave, JSON.stringify(valor));
+                erroBackup = '';
+                return true;
+            } catch (erro) {
+                erroBackup = 'Backup local não pôde ser salvo (sem espaço ou acesso bloqueado). Baixe o backup JSON.';
+                console.error(erroBackup, erro);
+                return false;
+            }
+        }
+
+        function gravarBackupLocal() {
+            salvarJSONLocal(CHAVE_BACKUP, cargas);
+        }
+
+        function obterBackupLocal() {
+            const salvos = lerJSONLocal(CHAVE_BACKUP, []);
+            return Array.isArray(salvos) ? salvos.filter(c => c && typeof c === 'object') : [];
+        }
+
+        function chaveFirebaseCarga(carga) {
+            if (carga.__firebaseKey) return String(carga.__firebaseKey);
+            // Chaves criadas pelo Firebase são únicas até entre dispositivos diferentes.
+            const chave = REF_CARGAS.push().key;
+            if (!chave) throw new Error('Falha ao gerar identificador da carga.');
+            carga.__firebaseKey = chave;
+            return chave;
+        }
+
+        function cargaParaNuvem(carga) {
+            const copia = { ...carga };
+            delete copia.__firebaseKey;
+            // Faz uma cópia independente, evitando que edições posteriores alterem um lote em trânsito.
+            return JSON.parse(JSON.stringify(copia));
+        }
+
+        function lerCargasFirebase(valor) {
+            if (!valor || typeof valor !== 'object') return [];
+            return Object.entries(valor)
+                .filter(([chave, item]) => item && typeof item === 'object' && !Array.isArray(item))
+                .map(([chave, item]) => enriquecerCarga({ ...item, __firebaseKey: String(chave) }));
+        }
+
+        function aplicarPendencias(base) {
+            const porChave = new Map(base.map(c => [String(c.__firebaseKey || c.id), c]));
+            Object.entries(pendencias).forEach(([chave, operacao]) => {
+                if (!operacao || operacao.dados === null) {
+                    porChave.delete(chave);
+                } else {
+                    porChave.set(chave, enriquecerCarga({ ...operacao.dados, __firebaseKey: chave }));
+                }
+            });
+            return Array.from(porChave.values());
+        }
+
+        function atualizarIndicadorFirebase() {
+            const banner = document.getElementById('sync-banner');
+            if (!banner) return;
+            const qtd = Object.keys(pendencias).length;
+            const texto = document.getElementById('sync-text');
+            const simbolo = document.getElementById('sync-symbol');
+            const restaurar = document.getElementById('btn-recuperar-local');
+            const ignorar = document.getElementById('btn-usar-nuvem-vazia');
+            const tentar = document.getElementById('btn-tentar-sync');
+            restaurar.classList.toggle('hidden', !modoRecuperacao);
+            ignorar.classList.toggle('hidden', !modoRecuperacao);
+            tentar.classList.toggle('hidden', !erroGravacao && !firebaseErro);
+
+            let mensagem = '';
+            let tom = 'blue';
+            let icone = '⏳';
+            if (modoRecuperacao) {
+                mensagem = `ATENÇÃO: Firebase retornou 0 cargas, mas existe backup neste navegador com ${backupParaRecuperar.length} carga(s). Os dados locais foram mantidos; escolha recuperar ou manter a nuvem vazia.`;
+                tom = 'amber'; icone = '⚠️';
+            } else if (firebaseErro) {
+                mensagem = `Falha ao ler o Firebase: ${firebaseErro}. Exibindo dados locais; verifique internet, configurações e regras do banco.`;
+                tom = 'rose'; icone = '⚠️';
+            } else if (erroGravacao) {
+                mensagem = `Erro ao salvar na nuvem: ${erroGravacao}. ${qtd} alteração(ões) guardada(s) para tentar novamente. Não considere salvo no Firebase.`;
+                tom = 'rose'; icone = '⚠️';
+            } else if (!firebaseConectado) {
+                mensagem = `Sem conexão com Firebase. ${qtd} alteração(ões) pendente(s). Dados guardados neste navegador, quando o armazenamento estiver disponível.`;
+                tom = 'amber'; icone = '📴';
+            } else if (!firebaseCarregado) {
+                mensagem = 'Firebase conectado. Carregando pedidos existentes...';
+            } else if (sincronizando || qtd) {
+                mensagem = `Sincronizando ${qtd} alteração(ões) com o Firebase. Aguarde a confirmação antes de atualizar a página.`;
+            } else {
+                mensagem = `Firebase conectado e sincronizado • ${cargas.length} carga(s) disponível(is).`;
+                tom = 'emerald'; icone = '✅';
+            }
+            if (erroBackup) mensagem += ` ${erroBackup}`;
+            texto.textContent = mensagem;
+            simbolo.textContent = icone;
+            const classes = {
+                blue: 'bg-blue-50 border-blue-200 text-blue-900',
+                emerald: 'bg-emerald-50 border-emerald-200 text-emerald-900',
+                amber: 'bg-amber-50 border-amber-300 text-amber-900',
+                rose: 'bg-rose-50 border-rose-300 text-rose-900'
+            };
+            banner.className = `border rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs shadow-sm ${classes[tom]}`;
+        }
+
+        function aplicarSnapshotFirebase(valor) {
+            firebaseCarregado = true;
+            firebaseErro = '';
+            cargasServidor = lerCargasFirebase(valor);
+            const backup = obterBackupLocal();
+            const haDadosRemotos = cargasServidor.length > 0;
+
+            if (!haDadosRemotos && backup.length && !ignorarBackupVazio) {
+                // Um snapshot vazio não apaga automaticamente o único backup disponível.
+                modoRecuperacao = true;
+                backupParaRecuperar = backup;
+                cargas = aplicarPendencias(backup);
+            } else {
+                modoRecuperacao = false;
+                backupParaRecuperar = null;
+                cargas = aplicarPendencias(cargasServidor);
+                gravarBackupLocal();
+            }
+            renderizar();
+            atualizarIndicadorFirebase();
+        }
+
+        function salvarAlteracoesDeCargas(lista) {
+            if (!lista.length) return;
+            // Primeiro guarda a recuperação no navegador, inclusive se cair a conexão.
+            lista.forEach(carga => {
+                const chave = chaveFirebaseCarga(carga);
+                pendencias[chave] = { dados: cargaParaNuvem(carga), versao: ++versaoAlteracao };
+            });
+            gravarBackupLocal();
+            salvarJSONLocal(CHAVE_PENDENCIAS, pendencias);
+            atualizarIndicadorFirebase();
+            sincronizarPendencias();
+        }
+
+        function removerCargaPersistida(carga) {
+            if (!carga) return;
+            const chave = chaveFirebaseCarga(carga);
+            pendencias[chave] = { dados: null, versao: ++versaoAlteracao };
+            gravarBackupLocal();
+            salvarJSONLocal(CHAVE_PENDENCIAS, pendencias);
+            atualizarIndicadorFirebase();
+            sincronizarPendencias();
+        }
+
+        async function sincronizarPendencias() {
+            if (!firebaseConectado || sincronizando || erroGravacao || firebaseErro) return;
+            const lote = { ...pendencias };
+            if (!Object.keys(lote).length) { atualizarIndicadorFirebase(); return; }
+            sincronizando = true;
+            atualizarIndicadorFirebase();
+            const alteracoes = {};
+            Object.entries(lote).forEach(([chave, operacao]) => {
+                alteracoes[chave] = operacao.dados;
+            });
+            try {
+                // UPDATE apenas nas chaves modificadas: não substitui a coleção completa.
+                await REF_CARGAS.update(alteracoes);
+                // Com confirmação do servidor, atualiza a última visão confirmada antes
+                // de remover a pendência, mesmo que o evento value chegue mais tarde.
+                const confirmadas = new Map(cargasServidor.map(c => [String(c.__firebaseKey), c]));
+                Object.entries(alteracoes).forEach(([chave, dados]) => {
+                    if (dados === null) confirmadas.delete(chave);
+                    else confirmadas.set(chave, enriquecerCarga({ ...dados, __firebaseKey: chave }));
+                });
+                cargasServidor = Array.from(confirmadas.values());
+                if (cargasServidor.length > 0) {
+                    modoRecuperacao = false;
+                    backupParaRecuperar = null;
+                }
+                Object.keys(lote).forEach(chave => {
+                    if (pendencias[chave] && pendencias[chave].versao === lote[chave].versao) {
+                        delete pendencias[chave];
+                    }
+                });
+                salvarJSONLocal(CHAVE_PENDENCIAS, pendencias);
+                erroGravacao = '';
+            } catch (erro) {
+                erroGravacao = erro?.message || String(erro);
+                console.error('Firebase: falha ao gravar alterações:', erro);
+            } finally {
+                sincronizando = false;
+                // O snapshot Firebase receberá o estado confirmado do servidor.
+                cargas = aplicarPendencias(modoRecuperacao && backupParaRecuperar ? backupParaRecuperar : cargasServidor);
+                if (modoRecuperacao && !Object.keys(pendencias).length && cargasServidor.length) modoRecuperacao = false;
+                gravarBackupLocal();
+                atualizarIndicadorFirebase();
+                renderizar();
+                if (!erroGravacao && Object.keys(pendencias).length) sincronizarPendencias();
+            }
+        }
+
+        function tentarSincronizar() {
+            erroGravacao = '';
+            firebaseErro = '';
+            sincronizarPendencias();
+            atualizarIndicadorFirebase();
+        }
+
+        function recuperarBackupLocal() {
+            if (!modoRecuperacao || !backupParaRecuperar?.length) return;
+            if (!confirm(`Restaurar ${backupParaRecuperar.length} carga(s) deste navegador para o Firebase? Isso recria os registros da cópia local.`)) return;
+            const restauradas = backupParaRecuperar.map(c => ({ ...c }));
+            cargas = restauradas;
+            ignorarBackupVazio = true;
+            modoRecuperacao = false;
+            backupParaRecuperar = null;
+            salvarAlteracoesDeCargas(restauradas);
+            renderizar();
+            atualizarIndicadorFirebase();
+        }
+
+        function ignorarBackupLocal() {
+            if (!confirm('O Firebase está vazio. Deseja deixar de visualizar o backup local? Você poderá importar um backup JSON se tiver baixado um.')) return;
+            ignorarBackupVazio = true;
+            modoRecuperacao = false;
+            backupParaRecuperar = null;
+            cargas = aplicarPendencias(cargasServidor);
+            gravarBackupLocal();
+            renderizar();
+            atualizarIndicadorFirebase();
+        }
+
+        function baixarBackupJSON() {
+            const backup = { app: 'Acompanhamento de Cargas', versao: 3, exportadoEm: new Date().toISOString(), cargas };
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `backup_cargas_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function importarBackupJSON(event) {
+            const arquivo = event.target.files[0];
+            if (!arquivo) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const dados = JSON.parse(reader.result);
+                    const lista = Array.isArray(dados) ? dados : dados.cargas;
+                    if (!Array.isArray(lista) || !lista.every(c => c && typeof c === 'object' && c.id != null && Array.isArray(c.produtos || []))) {
+                        throw new Error('Este arquivo não contém um backup de cargas válido.');
+                    }
+                    if (!confirm(`Importar ${lista.length} carga(s) deste backup? Os registros de mesma chave serão atualizados, sem apagar outras cargas na nuvem.`)) return;
+                    const recebidas = lista.map(c => enriquecerCarga({ ...c }));
+                    const porChave = new Map(cargas.map(c => [String(c.__firebaseKey || c.id), c]));
+                    recebidas.forEach(c => porChave.set(String(chaveFirebaseCarga(c)), c));
+                    cargas = Array.from(porChave.values());
+                    modoRecuperacao = false;
+                    ignorarBackupVazio = true;
+                    backupParaRecuperar = null;
+                    salvarAlteracoesDeCargas(recebidas);
+                    renderizar();
+                    alert('Backup importado para este navegador. Confira no painel o status da sincronização com Firebase.');
+                } catch (erro) {
+                    alert(`Erro ao importar backup: ${erro.message}`);
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(arquivo, 'UTF-8');
+        }
 
         window.addEventListener('DOMContentLoaded', () => {
             preencherListasFornecedores();
-            // Escuta alterações na nuvem em tempo real
-            db.ref('cargas').on('value', (snapshot) => {
-                const data = snapshot.val();
-                cargas = data ? Object.values(data).filter(Boolean).map(enriquecerCarga) : [];
-                renderizar();
+            cargas = aplicarPendencias(obterBackupLocal());
+            renderizar();
+            atualizarIndicadorFirebase();
+
+            db.ref('.info/connected').on('value', snapshot => {
+                firebaseConectado = snapshot.val() === true;
+                if (firebaseConectado) {
+                    erroGravacao = '';
+                    sincronizarPendencias();
+                }
+                atualizarIndicadorFirebase();
+            });
+            REF_CARGAS.on('value', snapshot => aplicarSnapshotFirebase(snapshot.val()), erro => {
+                firebaseErro = erro?.message || String(erro);
+                console.error('Firebase: falha ao carregar pedidos:', erro);
+                atualizarIndicadorFirebase();
             });
         });
-
-        function salvarStorage() {
-            // Salva na nuvem (Firebase)
-            db.ref('cargas').set(cargas);
-        }
 
         function alternarVisao(modo) {
             modoVisao = modo;
@@ -652,7 +976,7 @@
             const carga = cargas.find(item => String(item.id) === String(id));
             if (!carga || !Array.isArray(carga.produtos) || !carga.produtos[indice]) return;
             carga.produtos[indice].qtd = String(novaQuantidade).trim();
-            salvarStorage();
+            salvarAlteracoesDeCargas([carga]);
             // Não renderiza imediatamente, evitando retirar o foco do campo editado.
         }
 
@@ -680,6 +1004,11 @@
         function importarPlanilhaDeItens(event) {
             const file = event.target.files[0];
             if (!file) return;
+            if (!firebaseCarregado && cargas.length === 0) {
+                alert('Aguarde o carregamento inicial do Firebase antes de importar. Isso evita pedidos duplicados. Se estiver sem internet, abra o programa novamente quando houver conexão.');
+                event.target.value = '';
+                return;
+            }
 
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -699,6 +1028,7 @@
                     if (!colunaQuantidade) return; // Não altera dados se a coluna não for definida.
 
                     const pedidosProcessadosNoArquivo = new Set();
+                    const cargasAlteradasNoArquivo = new Set();
                     let produtosAdicionados = 0;
                     let quantidadesSemValor = 0;
                     let novasCargasCriadas = 0;
@@ -779,6 +1109,7 @@
                             unidade: unidade
                         });
 
+                        cargasAlteradasNoArquivo.add(carga);
                         produtosAdicionados++;
                     });
 
@@ -790,10 +1121,14 @@
                     if (quantidadesSemValor > 0) {
                         msg += `\n⚠ ${quantidadesSemValor} item(ns) com quantidade vazia na planilha. Eles aparecerão como "Não informada", e você poderá editar o valor na lista.`;
                     }
-                    alert(msg);
-
-                    salvarStorage();
+                    if (produtosAdicionados === 0) {
+                        alert('Nenhum item válido foi encontrado: nenhuma carga foi modificada.');
+                        return;
+                    }
+                    // A escrita no Firebase pode demorar ou falhar. O painel indica o status verdadeiro.
+                    salvarAlteracoesDeCargas([...cargasAlteradasNoArquivo]);
                     renderizar();
+                    alert(msg + '\n\nAs alterações estão guardadas neste navegador. Confira a faixa de status para saber quando o Firebase confirmar a sincronização.');
                 } catch (error) {
                     alert("Erro ao ler a planilha. Certifique-se de que é um arquivo Excel (.xlsx, .xls) ou CSV válido.");
                     console.error(error);
@@ -858,7 +1193,7 @@
             const idx = cargas.findIndex(c => c.id === id);
             if (idx !== -1) {
                 cargas[idx].prevChegada = novaData;
-                salvarStorage();
+                salvarAlteracoesDeCargas([cargas[idx]]);
                 renderizar();
             }
         }
@@ -1123,7 +1458,7 @@
 
         function toggleStatus(id, campo) {
             const idx = cargas.findIndex(c => c.id === id);
-            if (idx !== -1) { cargas[idx][campo] = !cargas[idx][campo]; salvarStorage(); renderizar(); }
+            if (idx !== -1) { cargas[idx][campo] = !cargas[idx][campo]; salvarAlteracoesDeCargas([cargas[idx]]); renderizar(); }
         }
 
         function alternarDescarregada(id) {
@@ -1131,7 +1466,7 @@
             if (idx !== -1) {
                 const atual = cargas[idx].descarregada || 'NÃO';
                 cargas[idx].descarregada = atual === 'NÃO' ? 'SIM' : 'NÃO';
-                salvarStorage(); renderizar();
+                salvarAlteracoesDeCargas([cargas[idx]]); renderizar();
             }
         }
 
@@ -1176,8 +1511,9 @@
             const id = document.getElementById('carga-id').value;
             if (!id) return;
             if (confirm("Tem certeza que deseja excluir esta carga?")) {
-                cargas = cargas.filter(c => c.id !== id);
-                salvarStorage();
+                const excluida = cargas.find(c => String(c.id) === String(id));
+                cargas = cargas.filter(c => String(c.id) !== String(id));
+                removerCargaPersistida(excluida);
                 renderizar();
                 fecharModal();
             }
@@ -1190,6 +1526,7 @@
 
             const nova = {
                 id: id || Date.now().toString(),
+                __firebaseKey: cargaExistente?.__firebaseKey || undefined,
                 tipoFrete: document.getElementById('carga-tipo-frete').value || 'FOB',
                 origem: document.getElementById('carga-origem').value,
                 cidadeOrigem: document.getElementById('carga-cidade-origem').value.trim(),
@@ -1213,7 +1550,7 @@
                 if (idx !== -1) cargas[idx] = nova;
             } else { cargas.unshift(nova); }
 
-            salvarStorage(); renderizar(); fecharModal();
+            salvarAlteracoesDeCargas([nova]); renderizar(); fecharModal();
         }
     </script>
 </body>

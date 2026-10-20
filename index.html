@@ -407,6 +407,11 @@
         ];
 
         const fornecedoresPorCodigo = new Map(FORNECEDORES.map(f => [f.codigo, f]));
+        function padronizarCodigoFornecedor(valor) {
+            const codigo = String(valor == null ? '' : valor).trim();
+            // Alguns ERPs exportam 00013 ou 13.0 para o código 13.
+            return /^\d{1,8}(?:\.0+)?$/.test(codigo) ? String(Number(codigo)) : codigo;
+        }
 
         function normalizarTexto(texto) {
             return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -428,7 +433,7 @@
         }
 
         function localizarFornecedor(codigo, nome, uf = '') {
-            const porCodigo = fornecedoresPorCodigo.get(String(codigo || '').trim());
+            const porCodigo = fornecedoresPorCodigo.get(padronizarCodigoFornecedor(codigo));
             if (porCodigo) return porCodigo;
             const encontrados = fornecedoresComMesmoNome(nome);
             const compativeis = uf ? encontrados.filter(f => f.uf === uf) : encontrados;
@@ -444,13 +449,21 @@
         }
 
         function enriquecerCarga(c) {
-            const f = localizarFornecedor(c.codigoFornecedor, c.fornecedor, c.origem);
-            if (!f) return c;
+            const porCodigo = fornecedoresPorCodigo.get(padronizarCodigoFornecedor(c.codigoFornecedor));
+            const f = porCodigo || localizarFornecedor('', c.fornecedor, c.origem);
+            if (!f) {
+                const ufNome = ufPorNomeFornecedor(c.fornecedor);
+                return ufNome && !c.origem ? { ...c, origem: ufNome } : c;
+            }
+            const nomeAnterior = normalizarTexto(c.fornecedor);
+            const vazio = !nomeAnterior || nomeAnterior === 'APREENCHER';
             return {
                 ...c,
-                codigoFornecedor: c.codigoFornecedor || f.codigo,
-                origem: ((!c.fornecedor || normalizarTexto(c.fornecedor) === 'APREENCHER') && c.codigoFornecedor) ? f.uf : (c.origem || f.uf),
-                fornecedor: (!c.fornecedor || normalizarTexto(c.fornecedor) === 'APREENCHER') ? f.nome : c.fornecedor
+                // O código do cadastro é a chave mais confiável: corrigir a UF, inclusive
+                // se o pedido antigo veio com PR por padrão.
+                codigoFornecedor: porCodigo ? porCodigo.codigo : (c.codigoFornecedor || f.codigo),
+                fornecedor: porCodigo || vazio ? f.nome : c.fornecedor,
+                origem: porCodigo ? f.uf : (c.origem || f.uf)
             };
         }
 
@@ -472,7 +485,7 @@
 
         function aoAlterarCodigoFornecedor() {
             const codigo = document.getElementById('carga-codigo-fornecedor').value.trim();
-            const f = fornecedoresPorCodigo.get(codigo);
+            const f = fornecedoresPorCodigo.get(padronizarCodigoFornecedor(codigo));
             if (f) preencherDadosFornecedor(f);
         }
 
@@ -968,87 +981,156 @@
             // Não renderiza imediatamente, evitando retirar o foco do campo editado.
         }
 
+        // Suporta os cabeçalhos usados em relatórios de pedidos/ERP, inclusive
+        // Cód.Fornec., Cód. Forn., Cód. do Fornecedor e Razão Social.
         function classificarColunaFornecedor(coluna) {
-            const nome = normalizarTexto(coluna);
-            if (/^(COD|CODIGO|ID|NUM|NUMERO|NRO|CD)(DO|DA)?(FORN|FORNEC|FORNECEDOR)/.test(nome) ||
-                /^(FORN|FORNEC|FORNECEDOR)(COD|CODIGO|ID)/.test(nome)) return 'codigo';
-            if (['FORNECEDOR', 'FORNEC', 'NOMEFORNECEDOR', 'NOMEFORNEC', 'RAZAOSOCIAL',
-                'NOMERAZAOSOCIAL', 'NOMEEMPRESA', 'EMPRESAFORNECEDORA', 'NOMEFANTASIA'].includes(nome)) return 'nome';
-            if (!/(COD|ID|NUMERO|TELEFONE|EMAIL|ENDERECO|CEP|CNPJ|CPF|CIDADE|UF)/.test(nome) &&
-                /(FORNECEDOR|FORNEC|RAZAOSOCIAL)/.test(nome)) return 'nome';
+            const n = normalizarTexto(coluna);
+            if (!n || n.startsWith('EMPTY')) return '';
+            if (/^(COD|CODIGO|CD|ID|NUM|NUMERO|NRO)(DE|DA|DO)?(FOR|FORN|FORNEC|FORNECEDOR|FORNECEDORES|PARCEIRO|EMITENTE)/.test(n) ||
+                /^(FOR|FORN|FORNEC|FORNECEDOR|PARCEIRO)(COD|CODIGO|ID|NUM|NUMERO|NRO)$/.test(n) ||
+                /^(COD|CODIGO)INTERNO(DE|DA|DO)?(FORN|FORNEC|FORNECEDOR)/.test(n)) return 'codigo';
+            if (['FOR', 'FORN', 'FORNEC', 'FORNECEDOR', 'FORNECEDORES',
+                 'NOMEFORNECEDOR', 'NOMEDOFORNECEDOR', 'NOMEDAFORNECEDORA',
+                 'NOMEFORNEC', 'NOMEDOFORNEC', 'RAZAOSOCIAL',
+                 'RAZAOSOCIALFORNECEDOR', 'NOMERAZAOSOCIAL', 'NOMEEMPRESA',
+                 'EMPRESAFORNECEDORA', 'NOMEFANTASIA', 'PARCEIROFORNECEDOR'].includes(n)) return 'nome';
+            if (!/(COD|ID|NUMERO|TELEFONE|EMAIL|ENDERECO|CEP|CNPJ|CPF|CIDADE|UF|ESTADO)/.test(n) &&
+                /(FORNECEDOR|FORNEC|RAZAOSOCIAL)/.test(n)) return 'nome';
             return '';
         }
 
-        function acharColunasFornecedor(linhas) {
-            const colunas = [...new Set(linhas.slice(0, 30).flatMap(row => Object.keys(row)))];
+        function acharColunasFornecedor(linhas, perguntar = true) {
+            const colunas = [...new Set(linhas.slice(0, 40).flatMap(row => Object.keys(row)))];
             const codigo = colunas.find(k => classificarColunaFornecedor(k) === 'codigo') || '';
             const nome = colunas.find(k => classificarColunaFornecedor(k) === 'nome') || '';
-            if (codigo || nome) return { codigo, nome };
-            // Cabeçalhos incomuns: pedir o nome da coluna em vez de importar tudo "A PREENCHER".
+            if (codigo || nome || !perguntar) return { codigo, nome };
+            // Não confundir a coluna de código do PRODUTO com código de FORNECEDOR.
             const opcoes = colunas.map((coluna, i) => `${i + 1}. ${coluna}`).join('\n');
             const valor = prompt(
-                'Não encontrei uma coluna de fornecedor na planilha.\n' +
-                'Informe o NÚMERO da coluna que contém o CÓDIGO ou o NOME do fornecedor.\n' +
-                'Digite 0 caso a planilha não tenha essa informação.\n\n' + opcoes
+                'Não encontrei a coluna de fornecedor.\n' +
+                'Selecione o NÚMERO da coluna com o CÓDIGO ou NOME do fornecedor.\n' +
+                'Digite 0 somente se a planilha realmente não tiver essa informação.\n\n' + opcoes
             );
             if (valor === null || String(valor).trim() === '0') return { codigo: '', nome: '' };
             const indice = Number(String(valor).trim());
             if (!Number.isInteger(indice) || indice < 1 || indice > colunas.length) {
-                alert('Coluna inválida. A importação continuará sem identificação automática do fornecedor.');
+                alert('Coluna inválida: os fornecedores permanecerão sem identificação se não existirem no pedido.');
                 return { codigo: '', nome: '' };
             }
+            // A célula escolhida pode conter somente código, somente nome ou ambos.
             const escolhida = colunas[indice - 1];
             return { codigo: escolhida, nome: escolhida };
         }
 
+        function interpretarFornecedorCelula(valor) {
+            const texto = String(valor == null ? '' : valor).trim();
+            if (!texto) return { codigo: '', nome: '' };
+            // Aceita 13, 13.0, #13, 13 - NUTRIZA, 13: NUTRIZA e 13 NUTRIZA.
+            const combinado = texto.match(/^#?\s*(\d{1,8})(?:\.0+)?\s*(?:[-–:|/]\s*|\s+(?=[A-Za-zÀ-ÿ]))(.+)$/);
+            if (combinado) return { codigo: combinado[1], nome: combinado[2].trim() };
+            const soCodigo = texto.match(/^#?\s*(\d{1,8})(?:\.0+)?\s*$/);
+            if (soCodigo) return { codigo: soCodigo[1], nome: '' };
+            return { codigo: '', nome: texto };
+        }
+
         function extrairDadosFornecedor(row, colunas) {
-            const valorCodigo = String(colunas.codigo && row[colunas.codigo] != null ? row[colunas.codigo] : '').trim();
-            const valorNome = String(colunas.nome && row[colunas.nome] != null ? row[colunas.nome] : '').trim();
-            let codigo = /^\d{1,8}(?:\.0+)?$/.test(valorCodigo) ? valorCodigo.replace(/\.0+$/, '') : '';
-            let nome = valorNome;
-            // A coluna "Fornecedor" pode trazer só o código, ou "13 - NUTRIZA...".
-            const composto = valorNome.match(/^#?\s*(\d{1,8})\s*[-–:]\s*(.+)$/);
-            if (composto) {
-                if (!codigo) codigo = composto[1];
-                nome = composto[2].trim();
-            } else if (/^#?\d{1,8}(?:\.0+)?$/.test(valorNome)) {
-                if (!codigo) codigo = valorNome.replace(/^#/, '').replace(/\.0+$/, '');
-                nome = '';
-            }
-            if (!codigo) {
-                const codigoComposto = valorCodigo.match(/^#?\s*(\d{1,8})\s*[-–:]\s*(.+)$/);
-                if (codigoComposto) {
-                    codigo = codigoComposto[1];
-                    if (!nome || nome === valorCodigo) nome = codigoComposto[2].trim();
-                }
-            }
-            const cadastro = localizarFornecedor(codigo, nome);
-            const iguais = fornecedoresComMesmoNome(nome);
-            const codigoSeguro = cadastro ? (codigo || (iguais.length === 1 ? cadastro.codigo : '')) : codigo;
-            const nomeSeguro = cadastro?.nome || nome;
-            const ufSegura = cadastro?.uf || ufPorNomeFornecedor(nome);
-            return { codigo: codigoSeguro, nome: nomeSeguro, uf: ufSegura };
+            const codigoCelula = interpretarFornecedorCelula(colunas.codigo ? row[colunas.codigo] : '');
+            const nomeCelula = interpretarFornecedorCelula(colunas.nome ? row[colunas.nome] : '');
+            let codigo = codigoCelula.codigo || nomeCelula.codigo;
+            let nome = nomeCelula.nome || codigoCelula.nome;
+            // O código válido do cadastro ganha prioridade sobre abreviações e apelidos.
+            const fCodigo = fornecedoresPorCodigo.get(padronizarCodigoFornecedor(codigo));
+            if (fCodigo) return { codigo: fCodigo.codigo, nome: fCodigo.nome, uf: fCodigo.uf, identificado: true };
+            const correspondentes = fornecedoresComMesmoNome(nome);
+            const ufNome = correspondentes.length && correspondentes.every(f => f.uf === correspondentes[0].uf)
+                ? correspondentes[0].uf : '';
+            const unico = correspondentes.length === 1 ? correspondentes[0] : null;
+            return {
+                codigo: codigo || (unico ? unico.codigo : ''),
+                nome: unico ? unico.nome : nome,
+                uf: unico ? unico.uf : ufNome,
+                identificado: Boolean(unico || ufNome)
+            };
         }
 
         function aplicarDadosFornecedorNaCarga(carga, dados, ufPlanilha) {
             let modificou = false;
-            const nomeAtualVazio = !carga.fornecedor || normalizarTexto(carga.fornecedor) === 'APREENCHER';
-            // Ao reimportar, a UF do fornecedor identificado na planilha substitui origem antiga sugerida por padrão.
-            const origemPlanilhaConfiavel = Boolean(dados.uf);
-            // Nome trazido explicitamente pela planilha; também completa pedidos antigos.
-            if (dados.nome && nomeAtualVazio) { carga.fornecedor = dados.nome; modificou = true; }
-            if (dados.codigo && !carga.codigoFornecedor) { carga.codigoFornecedor = dados.codigo; modificou = true; }
-            if ((!carga.origem || origemPlanilhaConfiavel) && (dados.uf || ufPlanilha) && carga.origem !== (dados.uf || ufPlanilha)) {
-                carga.origem = dados.uf || ufPlanilha;
-                modificou = true;
+            const atribuir = (campo, valor) => {
+                if (valor && carga[campo] !== valor) { carga[campo] = valor; modificou = true; }
+            };
+            const cadastroCodigo = fornecedoresPorCodigo.get(padronizarCodigoFornecedor(dados.codigo));
+            if (cadastroCodigo) {
+                // Com código conhecido, nome e UF SEMPRE acompanham a tabela de fornecedores.
+                atribuir('codigoFornecedor', cadastroCodigo.codigo);
+                atribuir('fornecedor', cadastroCodigo.nome);
+                atribuir('origem', cadastroCodigo.uf);
+                return modificou;
             }
-            const cadastro = localizarFornecedor(carga.codigoFornecedor, carga.fornecedor, carga.origem);
-            if (cadastro && (!carga.fornecedor || normalizarTexto(carga.fornecedor) === 'APREENCHER')) {
-                carga.fornecedor = cadastro.nome;
-                modificou = true;
+            if (dados.nome && normalizarTexto(dados.nome) !== 'APREENCHER') {
+                // Nome explícito da planilha substitui o marcador 'A PREENCHER'.
+                const nomeAtual = normalizarTexto(carga.fornecedor);
+                if (!nomeAtual || nomeAtual === 'APREENCHER') atribuir('fornecedor', dados.nome);
             }
-            if (cadastro && !carga.origem) { carga.origem = cadastro.uf; modificou = true; }
+            if (dados.codigo && !carga.codigoFornecedor) atribuir('codigoFornecedor', dados.codigo);
+            if (dados.uf) atribuir('origem', dados.uf);
+            else if (!carga.origem && /^[A-Z]{2}$/.test(String(ufPlanilha || ''))) atribuir('origem', ufPlanilha);
+            const cadastroAnterior = fornecedoresPorCodigo.get(padronizarCodigoFornecedor(carga.codigoFornecedor));
+            if (cadastroAnterior) {
+                atribuir('fornecedor', cadastroAnterior.nome);
+                atribuir('origem', cadastroAnterior.uf);
+            }
             return modificou;
+        }
+
+        // Reconhece planilhas com linhas de título antes do cabeçalho real e
+        // seleciona a aba de pedidos (em vez de presumir que será sempre a primeira).
+        function pontuarColunasPedido(colunas) {
+            const nomes = colunas.map(normalizarTexto);
+            let nota = 0;
+            if (nomes.some(n => /(?:^|NUMERO|NRO|NUM|NR|CODIGO|COD)PEDIDO/.test(n) || n === 'PED' || n === 'ORDEMDECOMPRA')) nota += 70;
+            if (nomes.some(n => pontuarColunaQuantidade(n) >= 0)) nota += 35;
+            if (nomes.some(n => /^(DESCRICAO|NOMEPRODUTO|PRODUTO|ITEMDESCRICAO)/.test(n))) nota += 20;
+            if (colunas.some(k => classificarColunaFornecedor(k))) nota += 12;
+            return nota;
+        }
+
+        function linhasComCabecalhoCorreto(aba) {
+            let padrao = XLSX.utils.sheet_to_json(aba, { defval: '' });
+            const notaPadrao = pontuarColunasPedido(Object.keys(padrao[0] || {}));
+            let matriz = [];
+            try { matriz = XLSX.utils.sheet_to_json(aba, { header: 1, defval: '' }); }
+            catch (erro) { return padrao; }
+            let melhorIndice = -1, melhorNota = notaPadrao;
+            matriz.slice(0, 22).forEach((linha, i) => {
+                if (!Array.isArray(linha)) return;
+                const nota = pontuarColunasPedido(linha.map(valor => String(valor == null ? '' : valor)));
+                if (nota > melhorNota) { melhorNota = nota; melhorIndice = i; }
+            });
+            if (melhorIndice < 0) return padrao;
+            const cabecalho = matriz[melhorIndice].map((celula, i) => String(celula == null ? '' : celula).trim() || `__EMPTY_${i}`);
+            const titulos = cabecalho.map((titulo, i) => cabecalho.indexOf(titulo) === i ? titulo : `${titulo}_${i}`);
+            return matriz.slice(melhorIndice + 1)
+                .filter(linha => Array.isArray(linha) && linha.some(v => String(v == null ? '' : v).trim()))
+                .map(linha => Object.fromEntries(titulos.map((chave, i) => [chave, linha[i] == null ? '' : linha[i]])));
+        }
+
+        function selecionarAbaPedidos(workbook) {
+            const abas = workbook.SheetNames.map(nome => {
+                const linhas = linhasComCabecalhoCorreto(workbook.Sheets[nome]);
+                const nota = pontuarColunasPedido(Object.keys(linhas[0] || {}));
+                return { nome, linhas, nota };
+            });
+            const candidatas = abas.filter(aba => aba.linhas.length);
+            const escolhida = candidatas.sort((a, b) => b.nota - a.nota)[0];
+            return { escolhida, abas };
+        }
+
+        function combinarDadosPorPedido(anterior, dados) {
+            const a = anterior || { codigo: '', nome: '', uf: '' };
+            const codigo = a.codigo || dados.codigo || '';
+            const f = fornecedoresPorCodigo.get(padronizarCodigoFornecedor(codigo));
+            if (f) return { codigo: f.codigo, nome: f.nome, uf: f.uf };
+            return { codigo, nome: a.nome || dados.nome || '', uf: a.uf || dados.uf || '' };
         }
 
         function obterCodigoProduto(row) {
@@ -1071,31 +1153,35 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-                    if (!json.length) { alert('A planilha importada está vazia!'); return; }
+                    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const { escolhida, abas } = selecionarAbaPedidos(workbook);
+                    if (!escolhida?.linhas?.length) { alert('Nenhum registro foi encontrado nas abas da planilha.'); return; }
+                    const json = escolhida.linhas;
                     const colunaQuantidade = escolherColunaQuantidade(json);
                     if (!colunaQuantidade) return;
                     const colunasFornecedor = acharColunasFornecedor(json);
                     const fornecedoresPorPedido = new Map();
                     const obterPedido = row => {
-                        let numero = extrairValorColuna(row, ['numerodopedido', 'numeropedido', 'nropedido', 'numpedido', 'pedido', 'ordem', 'num', 'doc']);
+                        let numero = extrairValorColuna(row, [
+                            'numerodopedido', 'numeropedido', 'nrodopedido', 'nropedido',
+                            'numpedido', 'pedido', 'ordemdecompra', 'ordem', 'num', 'doc'
+                        ]);
                         if (!numero) numero = String(Object.values(row)[0] ?? '').trim();
                         return numero;
                     };
-                    // A informação do fornecedor pode aparecer somente em algumas linhas do mesmo pedido.
-                    json.forEach(row => {
-                        const pedido = obterPedido(row);
-                        if (!pedido) return;
-                        const dados = extrairDadosFornecedor(row, colunasFornecedor);
-                        const anterior = fornecedoresPorPedido.get(pedido) || { codigo: '', nome: '', uf: '' };
-                        fornecedoresPorPedido.set(pedido, {
-                            codigo: anterior.codigo || dados.codigo,
-                            nome: anterior.nome || dados.nome,
-                            uf: anterior.uf || dados.uf
-                        });
+                    const registrarFornecedor = (pedido, dados) => {
+                        if (!pedido || (!dados.codigo && !dados.nome)) return;
+                        fornecedoresPorPedido.set(pedido, combinarDadosPorPedido(fornecedoresPorPedido.get(pedido), dados));
+                    };
+                    // O fornecedor pode aparecer em apenas uma linha do pedido.
+                    json.forEach(row => registrarFornecedor(obterPedido(row), extrairDadosFornecedor(row, colunasFornecedor)));
+                    // Algumas exportações incluem uma aba adicional com pedido x fornecedor.
+                    abas.filter(aba => aba.nome !== escolhida.nome).forEach(aba => {
+                        const colunas = acharColunasFornecedor(aba.linhas, false);
+                        if (!colunas.codigo && !colunas.nome) return;
+                        const cabecalhos = Object.keys(aba.linhas[0] || {}).map(normalizarTexto);
+                        if (!cabecalhos.some(c => c.includes('PEDIDO') || c === 'PED' || c === 'ORDEMDECOMPRA')) return;
+                        aba.linhas.forEach(row => registrarFornecedor(obterPedido(row), extrairDadosFornecedor(row, colunas)));
                     });
 
                     const pedidosProcessadosNoArquivo = new Set();
@@ -1103,23 +1189,22 @@
                     let produtosAdicionados = 0;
                     let quantidadesSemValor = 0;
                     let novasCargasCriadas = 0;
-                    let pedidosPreenchidos = 0;
+                    let pedidosAtualizados = 0;
                     json.forEach(row => {
                         const pedido = obterPedido(row);
                         if (!pedido) return;
                         let carga = cargas.find(c => String(c.numeroPedido).trim() === pedido);
                         const dados = fornecedoresPorPedido.get(pedido) || { codigo: '', nome: '', uf: '' };
-                        const ufPlanilha = extrairValorColuna(row, ['estadoorigem', 'uforigem', 'uf']).toUpperCase();
+                        const ufPlanilha = extrairValorColuna(row, ['estadoorigem', 'uforigem', 'uf', 'estado']).toUpperCase();
                         if (!carga) {
                             const motorista = extrairValorColuna(row, ['motorista', 'mot', 'condutor', 'transporte']) || 'A PREENCHER';
                             const tipoFrete = extrairValorColuna(row, ['frete', 'tipo', 'cif', 'fob']).toUpperCase().includes('CIF') ? 'CIF' : 'FOB';
                             carga = {
                                 id: Date.now().toString() + Math.random().toString(36).slice(2, 8),
                                 tipoFrete,
-                                origem: dados.uf || ufPlanilha,
-                                codigoFornecedor: dados.codigo,
+                                origem: '', codigoFornecedor: '',
                                 refHoras: '48:00:00', numeroPedido: pedido,
-                                fornecedor: dados.nome || 'A PREENCHER', motorista,
+                                fornecedor: 'A PREENCHER', motorista,
                                 dataColeta: '', horaColeta: '', prevChegada: '',
                                 entrada: false, naPorta: false, carregado: false,
                                 descarregada: 'NÃO', produtos: []
@@ -1128,12 +1213,16 @@
                             novasCargasCriadas++;
                         }
                         if (!pedidosProcessadosNoArquivo.has(pedido)) {
-                            if (aplicarDadosFornecedorNaCarga(carga, dados, ufPlanilha)) pedidosPreenchidos++;
+                            const alterou = aplicarDadosFornecedorNaCarga(carga, dados, ufPlanilha);
+                            if (alterou) pedidosAtualizados++;
                             carga.produtos = [];
                             pedidosProcessadosNoArquivo.add(pedido);
                         }
                         const codigo = obterCodigoProduto(row);
-                        const descricao = extrairValorColuna(row, ['descricaoproduto', 'descricaodoitem', 'descricao', 'desc', 'nomeproduto', 'produto']) || '-';
+                        const descricao = extrairValorColuna(row, [
+                            'descricaoproduto', 'descricaodoitem', 'descricao',
+                            'desc', 'nomeproduto', 'produto'
+                        ]) || '-';
                         const qtd = lerQuantidadePlanilha(row, colunaQuantidade);
                         if (qtd === '') quantidadesSemValor++;
                         const unidade = extrairValorColuna(row, ['unidade', 'und', 'un', 'emb']) || 'CX';
@@ -1141,13 +1230,27 @@
                         cargasAlteradasNoArquivo.add(carga);
                         produtosAdicionados++;
                     });
-                    if (!produtosAdicionados) { alert('Nenhum item válido foi encontrado. Nenhuma carga foi modificada.'); return; }
+                    if (!produtosAdicionados) {
+                        alert('Nenhum item válido foi encontrado. Nenhuma carga foi modificada.');
+                        return;
+                    }
                     salvarAlteracoesDeCargas([...cargasAlteradasNoArquivo]);
                     renderizar();
-                    const naoIdentificados = [...cargasAlteradasNoArquivo].filter(c => !c.fornecedor || normalizarTexto(c.fornecedor) === 'APREENCHER').length;
-                    let msg = `Importação realizada!\n• Itens: ${produtosAdicionados}\n• Quantidades lidas da coluna: ${colunaQuantidade}\n• Novas cargas: ${novasCargasCriadas}\n• Pedidos com dados de fornecedor complementados: ${pedidosPreenchidos}`;
-                    if (naoIdentificados) msg += `\n⚠ ${naoIdentificados} pedido(s) continuam sem fornecedor. A planilha precisa conter o código ou o nome para preencher automaticamente.`;
-                    if (quantidadesSemValor) msg += `\n⚠ ${quantidadesSemValor} quantidade(s) sem informação.`;
+                    const identificadas = [...cargasAlteradasNoArquivo].filter(c =>
+                        c.fornecedor && normalizarTexto(c.fornecedor) !== 'APREENCHER' && c.origem
+                    ).length;
+                    const pendentes = [...cargasAlteradasNoArquivo].filter(c =>
+                        !c.fornecedor || normalizarTexto(c.fornecedor) === 'APREENCHER' || !c.origem
+                    ).map(c => c.numeroPedido);
+                    let msg = `Importação realizada!\n` +
+                        `• Aba: ${escolhida.nome}\n` +
+                        `• Pedidos: ${cargasAlteradasNoArquivo.size}\n` +
+                        `• Fornecedor e UF preenchidos: ${identificadas}\n` +
+                        `• Pedidos atualizados: ${pedidosAtualizados}\n` +
+                        `• Itens: ${produtosAdicionados} (quantidades: ${colunaQuantidade})\n` +
+                        `• Novas cargas: ${novasCargasCriadas}`;
+                    if (pendentes.length) msg += `\n⚠ Sem fornecedor/UF: ${pendentes.length} pedido(s) (${pendentes.slice(0, 7).join(', ')}${pendentes.length > 7 ? ', ...' : ''}). Confira se a planilha possui código/nome do fornecedor.`;
+                    if (quantidadesSemValor) msg += `\n⚠ ${quantidadesSemValor} quantidade(s) em branco.`;
                     alert(msg + '\n\nAs alterações serão sincronizadas em segundo plano. Um aviso aparecerá se ocorrer algum problema.');
                 } catch (error) {
                     alert('Erro ao importar a planilha. Verifique o formato Excel (.xlsx, .xls) ou CSV.');

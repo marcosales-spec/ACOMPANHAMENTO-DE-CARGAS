@@ -329,7 +329,7 @@
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo Frete</label>
-                        <select id="carga-tipo-frete" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer font-bold">
+                        <select id="carga-tipo-frete" required onchange="atualizarCampoMotorista()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer font-bold">
                             <option value="">Selecione</option>
                             <option value="FOB">FOB</option>
                             <option value="CIF">CIF</option>
@@ -389,6 +389,7 @@
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Motorista</label>
                         <input type="text" id="carga-motorista" placeholder="Nome do motorista" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <p id="nota-motorista-cif" class="hidden text-[11px] text-indigo-700 mt-1 font-medium">Frete CIF: motorista preenchido automaticamente como N/A.</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -598,6 +599,44 @@
             };
         }
 
+        // Regra de negocio: frete CIF nao depende de motorista cadastrado.
+        // A classificacao do fornecedor por codigo prevalece sobre valores antigos.
+        function motoristaParaExibicao(carga) {
+            return tiposParaExibicao(carga).tipoFrete === 'CIF'
+                ? 'N/A' : (carga.motorista || 'A PREENCHER');
+        }
+
+        function garantirMotoristaCIF(carga) {
+            if (tiposParaExibicao(carga).tipoFrete !== 'CIF' || carga.motorista === 'N/A') return false;
+            carga.motorista = 'N/A';
+            return true;
+        }
+
+        function atualizarCampoMotorista() {
+            const frete = document.getElementById('carga-tipo-frete').value;
+            const campo = document.getElementById('carga-motorista');
+            const cif = frete === 'CIF';
+            if (cif) {
+                // Se o usuario alternar FOB -> CIF -> FOB, conserva o nome digitado.
+                if (!campo.readOnly && campo.value.trim() && campo.value !== 'N/A') {
+                    campo.dataset.motoristaFob = campo.value;
+                }
+                campo.value = 'N/A';
+                campo.readOnly = true;
+                campo.title = 'Preenchimento automatico para frete CIF';
+            } else {
+                if (campo.readOnly && campo.value === 'N/A') {
+                    campo.value = campo.dataset.motoristaFob || '';
+                }
+                campo.readOnly = false;
+                campo.title = '';
+            }
+            campo.classList.toggle('bg-slate-100', cif);
+            campo.classList.toggle('text-slate-500', cif);
+            campo.classList.toggle('cursor-not-allowed', cif);
+            document.getElementById('nota-motorista-cif').classList.toggle('hidden', !cif);
+        }
+
         function ufPorNomeFornecedor(nome) {
             const encontrados = fornecedoresComMesmoNome(nome);
             return encontrados.length && encontrados.every(f => f.uf === encontrados[0].uf)
@@ -610,16 +649,18 @@
             const vinculo = classificacaoPorFornecedor(c.codigoFornecedor, c.fornecedor);
             if (!f) {
                 const ufNome = ufPorNomeFornecedor(c.fornecedor);
-                return {
+                const normalizada = {
                     ...c,
                     origem: c.origem || ufNome || '',
                     tipoFrete: vinculo.tipoFrete || normalizarTipoFrete(c.tipoFrete),
                     tipoCarga: vinculo.tipoCarga || normalizarTipoCarga(c.tipoCarga)
                 };
+                garantirMotoristaCIF(normalizada);
+                return normalizada;
             }
             const nomeAnterior = normalizarTexto(c.fornecedor);
             const vazio = !nomeAnterior || nomeAnterior === 'APREENCHER';
-            return {
+            const normalizada = {
                 ...c,
                 codigoFornecedor: porCodigo ? porCodigo.codigo : (c.codigoFornecedor || f.codigo),
                 fornecedor: porCodigo || vazio ? f.nome : c.fornecedor,
@@ -627,6 +668,8 @@
                 tipoFrete: porCodigo ? f.tipoFrete : (vinculo.tipoFrete || normalizarTipoFrete(c.tipoFrete)),
                 tipoCarga: (porCodigo && f.tipoCarga) ? f.tipoCarga : (vinculo.tipoCarga || normalizarTipoCarga(c.tipoCarga))
             };
+            garantirMotoristaCIF(normalizada);
+            return normalizada;
         }
 
         function preencherListasFornecedores() {
@@ -645,6 +688,7 @@
             document.getElementById('carga-tipo-frete').value = f.tipoFrete;
             document.getElementById('carga-tipo-carga').value = f.tipoCarga;
             aoMudarOrigem();
+            atualizarCampoMotorista();
         }
 
         function aoAlterarCodigoFornecedor() {
@@ -673,6 +717,7 @@
                 const tipoPorNome = classificacaoPorFornecedor('', nome);
                 if (tipoPorNome.tipoFrete) document.getElementById('carga-tipo-frete').value = tipoPorNome.tipoFrete;
                 if (tipoPorNome.tipoCarga) document.getElementById('carga-tipo-carga').value = tipoPorNome.tipoCarga;
+                atualizarCampoMotorista();
             }
         }
 
@@ -767,6 +812,7 @@
 
         function cargaParaNuvem(carga) {
             const copia = { ...carga };
+            garantirMotoristaCIF(copia);
             delete copia.__firebaseKey;
             // Cada gravação pertence à geração atual. Um pedido salvo por um
             // navegador desatualizado depois de uma limpeza não será exibido.
@@ -1661,9 +1707,11 @@
                                 pedidosComEntrega.add(pedido);
                             }
                             const alterou = aplicarDadosFornecedorNaCarga(carga, dados, ufPlanilha);
+                            // Vale para pedidos novos e para a reimportacao de pedidos antigos.
+                            const atualizouMotorista = garantirMotoristaCIF(carga);
                             const tipoDaLinha = normalizarTipoCarga(extrairValorColuna(row, ['tipodecarga', 'classificacaocarga']));
                             if (!carga.tipoCarga && tipoDaLinha && !fornecedoresPorCodigo.has(padronizarCodigoFornecedor(carga.codigoFornecedor))) carga.tipoCarga = tipoDaLinha;
-                            if (alterou) pedidosAtualizados++;
+                            if (alterou || atualizouMotorista) pedidosAtualizados++;
                             carga.produtos = [];
                             pedidosProcessadosNoArquivo.add(pedido);
                         }
@@ -1823,7 +1871,7 @@
             return cargas.filter(c => {
                 const matchBusca = (c.fornecedor || '').toLowerCase().includes(busca)
                                 || (c.codigoFornecedor || '').toLowerCase().includes(busca)
-                                || (c.motorista || '').toLowerCase().includes(busca)
+                                || motoristaParaExibicao(c).toLowerCase().includes(busca)
                                 || (c.numeroPedido || '').toLowerCase().includes(busca);
                 const matchOrigem = !origem || c.origem === origem;
                 const tipos = tiposParaExibicao(c);
@@ -1900,7 +1948,7 @@
                     <td class="py-2.5 px-3 font-bold ${c.fornecedor === 'A PREENCHER' ? 'text-amber-600 italic' : 'text-slate-900'}">
                         ${c.codigoFornecedor ? `<span class="text-[10px] text-indigo-700 mr-1">#${c.codigoFornecedor}</span>` : ''}${c.fornecedor || '-'}
                     </td>
-                    <td class="py-2.5 px-3 ${c.motorista === 'A PREENCHER' ? 'text-amber-600 italic font-semibold' : 'text-slate-600'}">${c.motorista}</td>
+                    <td class="py-2.5 px-3 ${motoristaParaExibicao(c) === 'A PREENCHER' ? 'text-amber-600 italic font-semibold' : 'text-slate-600'}">${motoristaParaExibicao(c)}</td>
                     <td class="py-2.5 px-3 text-slate-600 font-medium">${formatarData(c.dataColeta)}</td>
                     <td class="py-2.5 px-3 text-slate-600 font-medium">${c.horaColeta || '-'}</td>
                     <td class="py-2.5 px-3 text-center">
@@ -2048,7 +2096,7 @@
                             <div class="text-[10px] text-slate-600 truncate">UF de origem: ${c.origem || 'não informada'}</div>
                             <div class="text-[10px] text-slate-600 truncate mt-1 flex items-center space-x-1">
                                 <span>👤</span>
-                                <span>${c.motorista || 'Sem Motorista'}</span>
+                                <span>${motoristaParaExibicao(c)}</span>
                             </div>
                         </div>
                     `;
@@ -2090,6 +2138,9 @@
             document.getElementById('carga-tipo-frete').value = '';
             document.getElementById('carga-tipo-carga').value = '';
             document.getElementById('carga-origem').value = '';
+            document.getElementById('carga-motorista').readOnly = false;
+            document.getElementById('carga-motorista').dataset.motoristaFob = '';
+            atualizarCampoMotorista();
             document.getElementById('btn-excluir-carga').classList.add('hidden');
             document.getElementById('carga-prev-chegada').dataset.origem = '';
             aoMudarOrigem();
@@ -2111,7 +2162,10 @@
             document.getElementById('carga-pedido').value = c.numeroPedido || '';
             document.getElementById('carga-codigo-fornecedor').value = c.codigoFornecedor || '';
             document.getElementById('carga-fornecedor').value = c.fornecedor === 'A PREENCHER' ? '' : c.fornecedor;
+            document.getElementById('carga-motorista').readOnly = false;
+            document.getElementById('carga-motorista').dataset.motoristaFob = '';
             document.getElementById('carga-motorista').value = c.motorista === 'A PREENCHER' ? '' : c.motorista;
+            atualizarCampoMotorista();
             document.getElementById('carga-data-coleta').value = c.dataColeta || '';
             document.getElementById('carga-hora-coleta').value = c.horaColeta || '';
             document.getElementById('carga-prev-chegada').value = c.prevChegada || '';
@@ -2174,6 +2228,7 @@
                 nova.tipoFrete = conhecido.tipoFrete;
                 if (conhecido.tipoCarga) nova.tipoCarga = conhecido.tipoCarga;
             }
+            garantirMotoristaCIF(nova);
             if (id) {
                 const idx = cargas.findIndex(c => c.id === id);
                 if (idx !== -1) cargas[idx] = nova;

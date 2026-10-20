@@ -119,6 +119,9 @@
                     <option value="SC">SC - Santa Catarina</option>
                     <option value="MT">MT - Mato Grosso</option>
                     <option value="BA">BA - Bahia</option>
+                    <option value="AL">AL - Alagoas</option>
+                    <option value="CE">CE - Ceará</option>
+                    <option value="PE">PE - Pernambuco</option>
                 </select>
 
                 <select id="filter-status" onchange="aplicarFiltros()" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer">
@@ -138,9 +141,9 @@
                         <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
                             <th class="py-2.5 px-3 text-center">Ações</th>
                             <th class="py-2.5 px-3">Frete</th>
-                            <th class="py-2.5 px-3">Origem</th>
+                            <th class="py-2.5 px-3">Cidade / UF de origem</th>
                             <th class="py-2.5 px-3">Pedido / Itens</th>
-                            <th class="py-2.5 px-3">Fornecedor</th>
+                            <th class="py-2.5 px-3">Cód. / Fornecedor</th>
                             <th class="py-2.5 px-3">Motorista</th>
                             <th class="py-2.5 px-3">Data Coleta</th>
                             <th class="py-2.5 px-3">Hora Coleta</th>
@@ -217,8 +220,9 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Origem (UF)</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Estado de origem (UF)</label>
                         <select id="carga-origem" required onchange="aoMudarOrigem()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
+                            <option value="">Selecione a UF</option>
                             <option value="PR">PR - Paraná</option>
                             <option value="GO">GO - Goiás</option>
                             <option value="TO">TO - Tocantins</option>
@@ -227,6 +231,9 @@
                             <option value="SC">SC - Santa Catarina</option>
                             <option value="MT">MT - Mato Grosso</option>
                             <option value="BA">BA - Bahia</option>
+                    <option value="AL">AL - Alagoas</option>
+                    <option value="CE">CE - Ceará</option>
+                    <option value="PE">PE - Pernambuco</option>
                         </select>
                     </div>
                     <div>
@@ -243,14 +250,31 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <!-- CÓDIGO/NOME DO FORNECEDOR: preencher automaticamente a origem -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Cód. Fornecedor</label>
+                        <input type="text" id="carga-codigo-fornecedor" list="lista-codigos-fornecedores" oninput="aoAlterarCodigoFornecedor()" placeholder="Ex.: 3518" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <datalist id="lista-codigos-fornecedores"></datalist>
+                    </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Fornecedor</label>
-                        <input type="text" id="carga-fornecedor" placeholder="Ex: BEM BRASIL" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="text" id="carga-fornecedor" list="lista-nomes-fornecedores" oninput="aoDigitarFornecedor()" placeholder="Nome do fornecedor" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <datalist id="lista-nomes-fornecedores"></datalist>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Motorista</label>
                         <input type="text" id="carga-motorista" placeholder="Nome do motorista" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Cidade de origem da carga</label>
+                        <input type="text" id="carga-cidade-origem" oninput="atualizarAvisoCidade()" placeholder="Ex.: São Miguel do Iguaçu" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <p id="cidade-origem-aviso" class="mt-1 text-[11px] text-amber-700">Confirme a cidade real da coleta.</p>
+                    </div>
+                    <div class="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-3 text-xs text-slate-600">
+                        Ao informar o código ou selecionar o fornecedor, o sistema associa a cidade e a UF. É possível corrigir a cidade para a unidade de onde a carga realmente sairá.
                     </div>
                 </div>
 
@@ -286,6 +310,190 @@
 
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
+        // CATÁLOGO DE FORNECEDORES (código interno, nome, UF e cidade de referência).
+        // Cidades em branco requerem confirmação do ponto real de coleta.
+        // A cidade de referência de uma empresa não garante que a carga sairá daquela unidade.
+        const FORNECEDORES = [
+            {"codigo": "3518", "nome": "FRIGORIFICO FRIELLA LTDA *", "uf": "PR", "cidade": "São Miguel do Iguaçu"},
+            {"codigo": "1677", "nome": "LATICINIO MINAS GERAIS LTDA.", "uf": "MG", "cidade": "Ituiutaba"},
+            {"codigo": "22", "nome": "COOPERATIVA AGROINDUSTRIAL LAR*", "uf": "PR", "cidade": "Medianeira"},
+            {"codigo": "5557", "nome": "ROSA BRANCA DM INDUSTRIA, ATACADO, DISTRIBUIDOR & LOGISTICA", "uf": "TO", "cidade": "Porto Nacional"},
+            {"codigo": "28", "nome": "PALHA IND.E COM.DE ALIM.LTDA *", "uf": "PR", "cidade": "Ibiporã"},
+            {"codigo": "4048", "nome": "AMC INDUSTRIA E COMERCIO DE ALIMENTOS LTDA", "uf": "PR", "cidade": ""},
+            {"codigo": "13", "nome": "NUTRIZA AGROINDUSTRIAL DE ALIMENTOS S/A", "uf": "GO", "cidade": "Pires do Rio"},
+            {"codigo": "5322", "nome": "PLUSVAL AGROAVICOLA LTDA", "uf": "PR", "cidade": "Iporã"},
+            {"codigo": "1680", "nome": "BEM BRASIL ALIMENTOS LTDA", "uf": "MG", "cidade": "Araxá"},
+            {"codigo": "2032", "nome": "BEM BRASIL ALIMENTOS LTDA", "uf": "MG", "cidade": "Araxá"},
+            {"codigo": "6778", "nome": "LFB COMERCIO DE CARNES LTDA", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "3458", "nome": "CERRADO FOODS LTDA", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "4912", "nome": "ATACADAO (CESAMAR) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "1250", "nome": "FUGINI ALIMENTOS LTDA", "uf": "GO", "cidade": "Cristalina"},
+            {"codigo": "4552", "nome": "CREMOLAT INDUSTRIA E COMERCIO DE LATICINIOS LTDA", "uf": "TO", "cidade": "Bernardo Sayão"},
+            {"codigo": "5484", "nome": "ATACADAO (TEOTONIO) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "5977", "nome": "ZANLORENZI BEBIDAS LTDA", "uf": "PR", "cidade": "Campo Largo"},
+            {"codigo": "27", "nome": "N. ZEPPONE S.A.*", "uf": "PR", "cidade": "Japurá"},
+            {"codigo": "4", "nome": "IND.E COM.DE CARNES E DERIVADOS BOI BRASIL", "uf": "TO", "cidade": ""},
+            {"codigo": "2922", "nome": "REGRA DISTRIBUIDORA DE PRODUTOS - EIRELI", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "5499", "nome": "COOPAVEL COOPERATIVA AGROINDUSTRIAL", "uf": "PR", "cidade": "Cascavel"},
+            {"codigo": "18", "nome": "COOPAVEL COOP.AGROINDUSTRIAL-FRISUINOS *", "uf": "PR", "cidade": "Cascavel"},
+            {"codigo": "3881", "nome": "LATICINIOS BELA VISTA", "uf": "GO", "cidade": "Bela Vista de Goiás"},
+            {"codigo": "5528", "nome": "SANTA HELENA INDUSTRIA DE ALIMENTOS S/A", "uf": "SP", "cidade": "Ribeirão Preto"},
+            {"codigo": "5576", "nome": "CEREALISTA SANTA FE LTDA", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "3877", "nome": "GIGANTE CASH & CARRY COMERCIO DE ALIMENTOS LTDA.", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "29", "nome": "W.W.SOARES", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "5558", "nome": "INDUSTRIA E COMERCIO DE CARNES E DERIVADOS BOI BRASIL LTDA", "uf": "TO", "cidade": ""},
+            {"codigo": "4388", "nome": "REDE BRASIL DISTRIBUICAO E LOGISTICA LTDA", "uf": "TO", "cidade": ""},
+            {"codigo": "5071", "nome": "BEBIDAS GRASSI DO BRASIL LTDA", "uf": "SC", "cidade": "Tubarão"},
+            {"codigo": "6079", "nome": "JURUPINGA", "uf": "PR", "cidade": "Campo Largo"},
+            {"codigo": "5618", "nome": "PRO-VAREJO DISTRIBUIDORA LTDA", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "418", "nome": "COSTA SUL PESCADOS S/A *", "uf": "SC", "cidade": "Navegantes"},
+            {"codigo": "2865", "nome": "IND.COM.PRODS.ALIMS.CEPERA LTDA", "uf": "SP", "cidade": ""},
+            {"codigo": "1466", "nome": "BRF-BRASIL FOODS S.A", "uf": "TO", "cidade": ""},
+            {"codigo": "3028", "nome": "SO FRUTA ALIMENTOS LTDA", "uf": "SP", "cidade": "Guaíra"},
+            {"codigo": "4108", "nome": "PASTIFICIO SELMI SA", "uf": "SP", "cidade": "Sumaré"},
+            {"codigo": "4109", "nome": "ASSAI (CESAMAR) SENDAS DISTRIBUIDORA S/A", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "6569", "nome": "FORT-FRIGO FOODS LTDA", "uf": "PR", "cidade": "Campo Magro"},
+            {"codigo": "5174", "nome": "SCALON E CERCHI LTDA", "uf": "MG", "cidade": "Patrocínio"},
+            {"codigo": "2906", "nome": "CRISTALCOPO DESCARTAVEIS S/A", "uf": "SC", "cidade": "Içara"},
+            {"codigo": "5318", "nome": "ITALIA COMERCIO E DISTRIB", "uf": "SC", "cidade": ""},
+            {"codigo": "4865", "nome": "LIDERA INDUSTRIA E COMERCIO DE BEBIDAS LTDA", "uf": "SP", "cidade": "Bauru"},
+            {"codigo": "2760", "nome": "ASSAI (TEOTONIO) SENDAS DISTRIBUIDORA S/A", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "2106", "nome": "RIO BRANCO ALIMENTOS S/A", "uf": "MG", "cidade": "Visconde do Rio Branco"},
+            {"codigo": "534", "nome": "ESPETOS AUREA", "uf": "TO", "cidade": ""},
+            {"codigo": "5912", "nome": "NATURAL PORK ALIMENTOS S.A.", "uf": "MT", "cidade": "Nova Mutum"},
+            {"codigo": "5684", "nome": "JAGUAFRANGOS INDUSTRIA E COMERCIO DE ALIMENTOS LTDA", "uf": "PR", "cidade": "Rondon"},
+            {"codigo": "5595", "nome": "JALAPAO INDUSTRIA COMERCIO E DISTRIBUICAO DE ALIMENTOS LTDA", "uf": "TO", "cidade": "Paraíso do Tocantins"},
+            {"codigo": "5596", "nome": "DROGARIAS ULTRA POPULAR AB LTDA", "uf": "TO", "cidade": ""},
+            {"codigo": "2986", "nome": "JANDIRA COM. DE PROD. ALIMENTICIOS LTDA", "uf": "TO", "cidade": "Gurupi"},
+            {"codigo": "5808", "nome": "MENDES ALIMENTOS LIMITADA", "uf": "GO", "cidade": "Anápolis"},
+            {"codigo": "4866", "nome": "ATACADAO (RODOVIARIA) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "4474", "nome": "CRISTALCOPO S/A", "uf": "PE", "cidade": "Pombos"},
+            {"codigo": "6124", "nome": "ECOFISH INDUSTRIA DE PESCADOS LTDA", "uf": "MG", "cidade": "Uberlândia"},
+            {"codigo": "6301", "nome": "FORTALEZA CEREALISTA LTDA", "uf": "TO", "cidade": "Lagoa da Confusão"},
+            {"codigo": "6550", "nome": "ANICUNS S/A ALCOOL E DERIVADOS", "uf": "GO", "cidade": "Anicuns"},
+            {"codigo": "5579", "nome": "GOLCALVES E TORTOLA SA", "uf": "PR", "cidade": ""},
+            {"codigo": "3144", "nome": "F PAULO NETO EIRELI EPP", "uf": "TO", "cidade": ""},
+            {"codigo": "5625", "nome": "QUALICOCO LTDA", "uf": "AL", "cidade": "Barra de São Miguel"},
+            {"codigo": "2105", "nome": "RIO BRANCO ALIMENTOS S/A", "uf": "MG", "cidade": "Visconde do Rio Branco"},
+            {"codigo": "5614", "nome": "VALE VERDE EMPREEDIMENTOS AGRICOLAS LTDA", "uf": "GO", "cidade": "Itapuranga"},
+            {"codigo": "5566", "nome": "NATURE INDUSTRIA COMERCIO E EXPORTACAO LTDA", "uf": "BA", "cidade": "Aurelino Leal"},
+            {"codigo": "982", "nome": "SUPER MELLO ATACADISTA DE ALIMENTOS LTDA", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "362", "nome": "CARLOS MAGNO MARTINS LEAL LTDA", "uf": "TO", "cidade": ""},
+            {"codigo": "30", "nome": "W. W. SOARES", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "5644", "nome": "FRIGORIFICO CALAFATE LTDA", "uf": "MG", "cidade": "Belo Horizonte"},
+            {"codigo": "5556", "nome": "FRIGORIFICO JATOBA LTDA", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "6269", "nome": "GOIASMINAS INDUSTRIA DE LATICINIOS LTDA", "uf": "GO", "cidade": "Itumbiara"},
+            {"codigo": "6277", "nome": "ABATEDOURO COROAVES LTDA", "uf": "PR", "cidade": "Presidente Castelo Branco"},
+            {"codigo": "6225", "nome": "BEM FRUTTA ATACADO E DISTRIBUIDOR DE ALIMENTOS", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "239", "nome": "BRF-BRASIL FOODS S.A", "uf": "GO", "cidade": ""},
+            {"codigo": "5469", "nome": "C.VALE - COOPERATIVA AGROINDUSTRIAL", "uf": "PR", "cidade": "Palotina"},
+            {"codigo": "4688", "nome": "PERNOD RICARD BRASIL INDUSTRIA E COMERCIO LTDA", "uf": "MG", "cidade": "Extrema"},
+            {"codigo": "4645", "nome": "CELM - AQUICULTURA S/A", "uf": "CE", "cidade": "Aracati"},
+            {"codigo": "4320", "nome": "ZANLORENZI BEBIDAS LTDA", "uf": "PR", "cidade": "Campo Largo"},
+            {"codigo": "5471", "nome": "C.VALE - COOPERATIVA AGROINDUSTRIAL", "uf": "PR", "cidade": "Palotina"},
+            {"codigo": "5402", "nome": "RIVIERA PESCADOS LTDA", "uf": "MG", "cidade": "Perdizes"},
+            {"codigo": "6041", "nome": "POLMAR", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "5971", "nome": "BRF S.A.", "uf": "MT", "cidade": ""},
+            {"codigo": "5562", "nome": "L' MARK INDUSTRIAL LTDA", "uf": "TO", "cidade": "Palmas"},
+            {"codigo": "4063", "nome": "SANCHEZ CANO LTDA", "uf": "SP", "cidade": "Jundiaí"}
+        ];
+
+        const fornecedoresPorCodigo = new Map(FORNECEDORES.map(f => [f.codigo, f]));
+
+        function normalizarTexto(texto) {
+            return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toUpperCase().replace(/[^A-Z0-9]/g, '');
+        }
+
+        // Prioriza o código do fornecedor. Nomes repetidos são tratados com cautela.
+        function localizarFornecedor(codigo, nome, uf = '') {
+            const porCodigo = fornecedoresPorCodigo.get(String(codigo || '').trim());
+            if (porCodigo) return porCodigo;
+            const nomeNorm = normalizarTexto(nome);
+            if (!nomeNorm || nomeNorm === 'APREENCHER') return null;
+            const encontrados = FORNECEDORES.filter(f => normalizarTexto(f.nome) === nomeNorm);
+            const compativeis = uf ? encontrados.filter(f => f.uf === uf) : encontrados;
+            const candidatos = compativeis.length ? compativeis : encontrados;
+            if (!candidatos.length) return null;
+            // Nomes duplicados só podem ser associados automaticamente quando a origem coincide.
+            if (candidatos.length > 1 && !candidatos.every(f => f.uf === candidatos[0].uf && f.cidade === candidatos[0].cidade)) return null;
+            return candidatos[0];
+        }
+
+        function obterCidadeCarga(c) {
+            if (c.cidadeOrigem) return c.cidadeOrigem;
+            const f = localizarFornecedor(c.codigoFornecedor, c.fornecedor, c.origem);
+            return f && (!c.origem || f.uf === c.origem) ? f.cidade : '';
+        }
+
+        function enriquecerCarga(c) {
+            const f = localizarFornecedor(c.codigoFornecedor, c.fornecedor, c.origem);
+            if (!f) return c;
+            return {
+                ...c,
+                // Não altera um código que não seja conhecido nem uma origem já digitada pelo usuário.
+                codigoFornecedor: c.codigoFornecedor || (
+                    FORNECEDORES.filter(item => normalizarTexto(item.nome) === normalizarTexto(c.fornecedor)).length === 1
+                        ? f.codigo : ''),
+                origem: c.origem || f.uf,
+                fornecedor: (!c.fornecedor || c.fornecedor === 'A PREENCHER') ? f.nome : c.fornecedor,
+                cidadeOrigem: c.cidadeOrigem || ((!c.origem || c.origem === f.uf) ? f.cidade : '')
+            };
+        }
+
+        function preencherListasFornecedores() {
+            document.getElementById('lista-codigos-fornecedores').innerHTML = FORNECEDORES.map(f =>
+                `<option value="${f.codigo}" label="${f.nome} - ${f.cidade || 'Cidade a confirmar'}/${f.uf}"></option>`
+            ).join('');
+            document.getElementById('lista-nomes-fornecedores').innerHTML =
+                [...new Set(FORNECEDORES.map(f => f.nome))].map(nome => `<option value="${nome.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"></option>`).join('');
+        }
+
+        function preencherDadosFornecedor(f, definirCodigo = true) {
+            if (!f) return;
+            if (definirCodigo) document.getElementById('carga-codigo-fornecedor').value = f.codigo;
+            document.getElementById('carga-fornecedor').value = f.nome;
+            document.getElementById('carga-origem').value = f.uf;
+            document.getElementById('carga-cidade-origem').value = f.cidade;
+            aoMudarOrigem();
+            atualizarAvisoCidade();
+        }
+
+        function aoAlterarCodigoFornecedor() {
+            const codigo = document.getElementById('carga-codigo-fornecedor').value.trim();
+            const f = fornecedoresPorCodigo.get(codigo);
+            if (f) preencherDadosFornecedor(f);
+        }
+
+        function aoDigitarFornecedor() {
+            const nome = document.getElementById('carga-fornecedor').value;
+            const codigoAtual = document.getElementById('carga-codigo-fornecedor').value;
+            const fornecedorAnterior = fornecedoresPorCodigo.get(codigoAtual);
+            if (fornecedorAnterior && normalizarTexto(fornecedorAnterior.nome) !== normalizarTexto(nome)) {
+                document.getElementById('carga-codigo-fornecedor').value = '';
+                if (document.getElementById('carga-cidade-origem').value === fornecedorAnterior.cidade) {
+                    document.getElementById('carga-cidade-origem').value = '';
+                }
+                atualizarAvisoCidade();
+            }
+            const uf = document.getElementById('carga-origem').value;
+            const f = localizarFornecedor('', nome, uf);
+            if (!f) {
+                document.getElementById('carga-codigo-fornecedor').value = '';
+                return;
+            }
+            const iguais = FORNECEDORES.filter(item => normalizarTexto(item.nome) === normalizarTexto(nome));
+            preencherDadosFornecedor(f, iguais.length === 1);
+            if (iguais.length > 1) document.getElementById('carga-codigo-fornecedor').value = '';
+        }
+
+        function atualizarAvisoCidade() {
+            const cidade = document.getElementById('carga-cidade-origem').value.trim();
+            document.getElementById('cidade-origem-aviso').textContent = cidade
+                ? 'Cidade sugerida pelo cadastro. Confirme o local real de coleta.'
+                : 'Cidade não confirmada: informe o município real de coleta antes de salvar, se disponível.';
+        }
+
         // Configuração do Firebase
         const firebaseConfig = {
           apiKey: "AIzaSyDVv7A8Gp0qJckqFkop74hsK835X7oySco",
@@ -308,10 +516,11 @@
         let dataCalendarioAtual = new Date();
 
         window.addEventListener('DOMContentLoaded', () => {
+            preencherListasFornecedores();
             // Escuta alterações na nuvem em tempo real
             db.ref('cargas').on('value', (snapshot) => {
                 const data = snapshot.val();
-                cargas = data ? Object.values(data) : [];
+                cargas = data ? Object.values(data).filter(Boolean).map(enriquecerCarga) : [];
                 renderizar();
             });
         });
@@ -366,12 +575,33 @@
         function extrairValorColuna(row, termosPossiveis) {
             const keys = Object.keys(row);
             for (let termo of termosPossiveis) {
-                const keyEncontrada = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '').includes(termo.toLowerCase().replace(/[^a-z0-9]/g, '')));
+                const keyEncontrada = keys.find(k => normalizarTexto(k).includes(normalizarTexto(termo)));
                 if (keyEncontrada && row[keyEncontrada] !== undefined && row[keyEncontrada] !== null) {
                     return String(row[keyEncontrada]).trim();
                 }
             }
             return '';
+        }
+
+        // Evita confundir "Cód.Fornec." com a coluna "Fornecedor".
+        function extrairNomeFornecedor(row) {
+            const chaves = Object.keys(row);
+            const exatas = ['FORNECEDOR', 'NOMEFORNECEDOR', 'RAZAOSOCIAL', 'NOMEEMPRESA'];
+            for (const termo of exatas) {
+                const chave = chaves.find(k => normalizarTexto(k) === termo);
+                if (chave && row[chave] != null && String(row[chave]).trim()) return String(row[chave]).trim();
+            }
+            const chavesNome = chaves.filter(k => !normalizarTexto(k).includes('COD') && !normalizarTexto(k).includes('ID'));
+            const chave = chavesNome.find(k => ['FORNECEDOR', 'FORNEC', 'RAZAO', 'EMPRESA'].some(t => normalizarTexto(k).includes(t)));
+            return chave && row[chave] != null ? String(row[chave]).trim() : '';
+        }
+
+        function extrairCodigoFornecedor(row) {
+            const chaves = Object.keys(row);
+            const termos = ['CODFORNEC', 'CODIGOFORNECEDOR', 'IDFORNECEDOR', 'CODFORNECEDOR', 'CODFORN'];
+            const chave = chaves.find(k => termos.some(termo => normalizarTexto(k).includes(termo)));
+            const valor = chave ? row[chave] : '';
+            return valor == null ? '' : String(valor).trim();
         }
 
         function importarPlanilhaDeItens(event) {
@@ -409,17 +639,23 @@
                         let carga = cargas.find(c => String(c.numeroPedido).trim() === pedido);
 
                         if (!carga) {
-                            const fornecedorPlanilha = extrairValorColuna(row, ['fornecedor', 'fornec', 'cliente', 'empresa']) || 'A PREENCHER';
+                            const codigoFornecedorPlanilha = extrairCodigoFornecedor(row);
+                            const fornecedorPlanilha = extrairNomeFornecedor(row) || 'A PREENCHER';
+                            const registroFornecedor = localizarFornecedor(codigoFornecedorPlanilha, fornecedorPlanilha);
+                            const ufPlanilha = extrairValorColuna(row, ['estadoorigem', 'uforigem', 'uf']) || '';
+                            const cidadePlanilha = extrairValorColuna(row, ['cidadeorigem', 'municipioorigem', 'cidade']) || '';
                             const motoristaPlanilha = extrairValorColuna(row, ['motorista', 'mot', 'condutor', 'transporte']) || 'A PREENCHER';
                             const tipoFretePlanilha = extrairValorColuna(row, ['frete', 'tipo', 'cif', 'fob']).toUpperCase().includes('CIF') ? 'CIF' : 'FOB';
 
                             carga = {
                                 id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
                                 tipoFrete: tipoFretePlanilha,
-                                origem: 'PR',
+                                origem: registroFornecedor?.uf || ufPlanilha.toUpperCase(),
+                                cidadeOrigem: registroFornecedor?.cidade || cidadePlanilha,
+                                codigoFornecedor: codigoFornecedorPlanilha || ((registroFornecedor && FORNECEDORES.filter(f => normalizarTexto(f.nome) === normalizarTexto(fornecedorPlanilha)).length === 1) ? registroFornecedor.codigo : ''),
                                 refHoras: '48:00:00',
                                 numeroPedido: pedido,
-                                fornecedor: fornecedorPlanilha,
+                                fornecedor: (registroFornecedor && codigoFornecedorPlanilha) ? registroFornecedor.nome : fornecedorPlanilha,
                                 motorista: motoristaPlanilha,
                                 dataColeta: '',
                                 horaColeta: '',
@@ -433,6 +669,19 @@
 
                             cargas.unshift(carga);
                             novasCargasCriadas++;
+                        }
+
+                        // Também completa a cidade/UF das cargas existentes quando houver fornecedor identificado.
+                        const codigoImportado = extrairCodigoFornecedor(row);
+                        const fornecedorImportado = extrairNomeFornecedor(row);
+                        const fornecedorIdentificado = localizarFornecedor(codigoImportado, fornecedorImportado || carga.fornecedor, carga.origem);
+                        if (fornecedorIdentificado) {
+                            if (!carga.codigoFornecedor) {
+                                const fornecsIguais = FORNECEDORES.filter(f => normalizarTexto(f.nome) === normalizarTexto(fornecedorImportado || carga.fornecedor));
+                                if (codigoImportado || fornecsIguais.length === 1) carga.codigoFornecedor = fornecedorIdentificado.codigo;
+                            }
+                            if (!carga.cidadeOrigem && (!carga.origem || carga.origem === fornecedorIdentificado.uf)) carga.cidadeOrigem = fornecedorIdentificado.cidade;
+                            if (!carga.origem) carga.origem = fornecedorIdentificado.uf;
                         }
 
                         if (!pedidosProcessadosNoArquivo.has(pedido)) {
@@ -496,7 +745,7 @@
             const uf = document.getElementById('carga-origem').value;
             const horasSelect = document.getElementById('carga-ref-horas');
             if (uf === 'PR' || uf === 'SP' || uf === 'SC') horasSelect.value = '48:00:00';
-            else if (uf === 'MG' || uf === 'GO' || uf === 'TO' || uf === 'MT' || uf === 'BA') horasSelect.value = '72:00:00';
+            else if (uf) horasSelect.value = '72:00:00';
             calcularPrevisaoAutomaticamente();
         }
 
@@ -513,7 +762,7 @@
                 dtCalculo.setHours(dtCalculo.getHours() + (horasAdd || 0));
                 dtCalculo.setMinutes(dtCalculo.getMinutes() + (minAdd || 0));
             }
-            document.getElementById('carga-prev-chegada').value = dtCalculo.toISOString().slice(0, 10);
+            document.getElementById('carga-prev-chegada').value = `${dtCalculo.getFullYear()}-${String(dtCalculo.getMonth() + 1).padStart(2, '0')}-${String(dtCalculo.getDate()).padStart(2, '0')}`;
         }
 
         function formatarData(dataStr) {
@@ -541,7 +790,9 @@
             const status = document.getElementById('filter-status').value;
 
             return cargas.filter(c => {
-                const matchBusca = (c.fornecedor || '').toLowerCase().includes(busca) 
+                const matchBusca = (c.fornecedor || '').toLowerCase().includes(busca)
+                                || (c.codigoFornecedor || '').toLowerCase().includes(busca)
+                                || (obterCidadeCarga(c) || '').toLowerCase().includes(busca)
                                 || (c.motorista || '').toLowerCase().includes(busca)
                                 || (c.numeroPedido || '').toLowerCase().includes(busca);
                 const matchOrigem = !origem || c.origem === origem;
@@ -595,7 +846,8 @@
                         <span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${badgeFreteClass}">${tipoFreteAtual}</span>
                     </td>
                     <td class="py-2.5 px-3 font-semibold text-slate-800">
-                        <span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-200">${c.origem}</span>
+                        <span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-200">${c.origem || 'UF?'}</span>
+                        <span class="text-[11px] ml-1 ${obterCidadeCarga(c) ? 'text-slate-700' : 'text-amber-700 italic'}">${obterCidadeCarga(c) || 'Cidade a confirmar'}</span>
                     </td>
                     <td class="py-2.5 px-3">
                         <div class="flex items-center space-x-2">
@@ -607,7 +859,9 @@
                             <span class="font-bold ${temProdutos ? 'text-indigo-600' : 'text-slate-500'}">${c.numeroPedido || '-'}</span>
                         </div>
                     </td>
-                    <td class="py-2.5 px-3 font-bold ${c.fornecedor === 'A PREENCHER' ? 'text-amber-600 italic' : 'text-slate-900'}">${c.fornecedor}</td>
+                    <td class="py-2.5 px-3 font-bold ${c.fornecedor === 'A PREENCHER' ? 'text-amber-600 italic' : 'text-slate-900'}">
+                        ${c.codigoFornecedor ? `<span class="text-[10px] text-indigo-700 mr-1">#${c.codigoFornecedor}</span>` : ''}${c.fornecedor || '-'}
+                    </td>
                     <td class="py-2.5 px-3 ${c.motorista === 'A PREENCHER' ? 'text-amber-600 italic font-semibold' : 'text-slate-600'}">${c.motorista}</td>
                     <td class="py-2.5 px-3 text-slate-600 font-medium">${formatarData(c.dataColeta)}</td>
                     <td class="py-2.5 px-3 text-slate-600 font-medium">${c.horaColeta || '-'}</td>
@@ -754,6 +1008,7 @@
                                 </div>
                             </div>
                             <div class="font-bold truncate text-slate-800 leading-tight">${c.fornecedor}</div>
+                            <div class="text-[10px] text-slate-600 truncate">📍 ${obterCidadeCarga(c) || 'Cidade a confirmar'} / ${c.origem || '?'}</div>
                             <div class="text-[10px] text-slate-600 truncate mt-1 flex items-center space-x-1">
                                 <span>👤</span>
                                 <span>${c.motorista || 'Sem Motorista'}</span>
@@ -796,6 +1051,8 @@
             document.getElementById('form-carga').reset();
             document.getElementById('carga-id').value = '';
             document.getElementById('carga-tipo-frete').value = 'FOB';
+            document.getElementById('carga-origem').value = '';
+            atualizarAvisoCidade();
             document.getElementById('btn-excluir-carga').classList.add('hidden');
             aoMudarOrigem();
             document.getElementById('modal-carga').classList.remove('hidden');
@@ -813,15 +1070,17 @@
             document.getElementById('carga-origem').value = c.origem;
             document.getElementById('carga-ref-horas').value = c.refHoras || '48:00:00';
             document.getElementById('carga-pedido').value = c.numeroPedido || '';
+            document.getElementById('carga-codigo-fornecedor').value = c.codigoFornecedor || '';
             document.getElementById('carga-fornecedor').value = c.fornecedor === 'A PREENCHER' ? '' : c.fornecedor;
+            document.getElementById('carga-cidade-origem').value = obterCidadeCarga(c);
             document.getElementById('carga-motorista').value = c.motorista === 'A PREENCHER' ? '' : c.motorista;
             document.getElementById('carga-data-coleta').value = c.dataColeta || '';
             document.getElementById('carga-hora-coleta').value = c.horaColeta || '';
             document.getElementById('carga-prev-chegada').value = c.prevChegada || '';
 
+            atualizarAvisoCidade();
             document.getElementById('btn-excluir-carga').classList.remove('hidden');
             document.getElementById('modal-carga').classList.remove('hidden');
-            calcularPrevisaoAutomaticamente();
         }
 
         function excluirCargaAtual() {
@@ -844,6 +1103,8 @@
                 id: id || Date.now().toString(),
                 tipoFrete: document.getElementById('carga-tipo-frete').value || 'FOB',
                 origem: document.getElementById('carga-origem').value,
+                cidadeOrigem: document.getElementById('carga-cidade-origem').value.trim(),
+                codigoFornecedor: document.getElementById('carga-codigo-fornecedor').value.trim(),
                 refHoras: document.getElementById('carga-ref-horas').value,
                 numeroPedido: document.getElementById('carga-pedido').value,
                 fornecedor: document.getElementById('carga-fornecedor').value || 'A PREENCHER',

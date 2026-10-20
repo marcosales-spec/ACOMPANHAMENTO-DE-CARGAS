@@ -22,6 +22,71 @@
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .indicador-card {
+            position: relative;
+            overflow: hidden;
+            transition: transform .18s ease, box-shadow .22s ease, border-color .22s ease, background-color .22s ease;
+        }
+        .indicador-card:hover {
+            transform: translateY(-1px);
+        }
+        .indicador-card:focus-visible {
+            outline: none;
+        }
+        .indicador-card .indicador-label,
+        .indicador-card .indicador-valor {
+            transition: color .2s ease;
+        }
+        .indicador-card[aria-pressed="true"] {
+            transform: translateY(-2px);
+        }
+        .indicador-card[aria-pressed="true"]::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 5px;
+            border-radius: 0 0 0.75rem 0.75rem;
+            opacity: .95;
+        }
+
+        #indicador-cif[aria-pressed="true"] {
+            background: linear-gradient(180deg, #faf5ff 0%, #f3e8ff 100%);
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, .22), 0 14px 28px -18px rgba(109, 40, 217, .70);
+        }
+        #indicador-cif[aria-pressed="true"]::after { background: #8b5cf6; }
+        #indicador-cif[aria-pressed="true"] .indicador-label,
+        #indicador-cif[aria-pressed="true"] .indicador-valor { color: #6d28d9; }
+
+        #indicador-fob[aria-pressed="true"] {
+            background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, .24), 0 14px 28px -18px rgba(180, 83, 9, .65);
+        }
+        #indicador-fob[aria-pressed="true"]::after { background: #f59e0b; }
+        #indicador-fob[aria-pressed="true"] .indicador-label,
+        #indicador-fob[aria-pressed="true"] .indicador-valor { color: #b45309; }
+
+        #indicador-refrigerada[aria-pressed="true"] {
+            background: linear-gradient(180deg, #ecfeff 0%, #cffafe 100%);
+            border-color: #06b6d4;
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, .22), 0 14px 28px -18px rgba(14, 116, 144, .60);
+        }
+        #indicador-refrigerada[aria-pressed="true"]::after { background: #06b6d4; }
+        #indicador-refrigerada[aria-pressed="true"] .indicador-label,
+        #indicador-refrigerada[aria-pressed="true"] .indicador-valor { color: #0e7490; }
+
+        #indicador-seca[aria-pressed="true"] {
+            background: linear-gradient(180deg, #fff7ed 0%, #fed7aa 100%);
+            border-color: #f97316;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, .22), 0 14px 28px -18px rgba(194, 65, 12, .62);
+        }
+        #indicador-seca[aria-pressed="true"]::after { background: #f97316; }
+        #indicador-seca[aria-pressed="true"] .indicador-label,
+        #indicador-seca[aria-pressed="true"] .indicador-valor { color: #c2410c; }
     </style>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col">
@@ -126,17 +191,17 @@
 
         <!-- INDICADORES DE FRETE E DE CARGA: CLIQUE PARA FILTRAR; COMBINÁVEIS -->
         <section class="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Indicadores de frete e tipo de carga">
-            <button id="indicador-cif" type="button" onclick="alternarFiltroPainel('frete','CIF')" aria-pressed="false" class="text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-violet-400 transition">
-                <p class="text-xs font-bold text-violet-700 uppercase">🚚 FRETE CIF</p><p id="stat-cif" class="text-2xl font-bold text-violet-700">0</p>
+            <button id="indicador-cif" type="button" onclick="alternarFiltroPainel('frete','CIF')" aria-pressed="false" class="indicador-card text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-violet-400 transition focus-visible:ring-0">
+                <p class="indicador-label text-xs font-bold text-violet-700 uppercase">🚚 FRETE CIF</p><p id="stat-cif" class="indicador-valor text-2xl font-bold text-violet-700">0</p>
             </button>
-            <button id="indicador-fob" type="button" onclick="alternarFiltroPainel('frete','FOB')" aria-pressed="false" class="text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-amber-400 transition">
-                <p class="text-xs font-bold text-amber-700 uppercase">🚚 FRETE FOB</p><p id="stat-fob" class="text-2xl font-bold text-amber-700">0</p>
+            <button id="indicador-fob" type="button" onclick="alternarFiltroPainel('frete','FOB')" aria-pressed="false" class="indicador-card text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-amber-400 transition focus-visible:ring-0">
+                <p class="indicador-label text-xs font-bold text-amber-700 uppercase">🚚 FRETE FOB</p><p id="stat-fob" class="indicador-valor text-2xl font-bold text-amber-700">0</p>
             </button>
-            <button id="indicador-refrigerada" type="button" onclick="alternarFiltroPainel('carga','Refrigerada')" aria-pressed="false" class="text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-cyan-400 transition">
-                <p class="text-xs font-bold text-cyan-700 uppercase">❄️ REFRIGERADA</p><p id="stat-refrigerada" class="text-2xl font-bold text-cyan-700">0</p>
+            <button id="indicador-refrigerada" type="button" onclick="alternarFiltroPainel('carga','Refrigerada')" aria-pressed="false" class="indicador-card text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-cyan-400 transition focus-visible:ring-0">
+                <p class="indicador-label text-xs font-bold text-cyan-700 uppercase">❄️ REFRIGERADA</p><p id="stat-refrigerada" class="indicador-valor text-2xl font-bold text-cyan-700">0</p>
             </button>
-            <button id="indicador-seca" type="button" onclick="alternarFiltroPainel('carga','Seca')" aria-pressed="false" class="text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-orange-400 transition">
-                <p class="text-xs font-bold text-orange-700 uppercase">📦 SECA</p><p id="stat-seca" class="text-2xl font-bold text-orange-700">0</p>
+            <button id="indicador-seca" type="button" onclick="alternarFiltroPainel('carga','Seca')" aria-pressed="false" class="indicador-card text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-orange-400 transition focus-visible:ring-0">
+                <p class="indicador-label text-xs font-bold text-orange-700 uppercase">📦 SECA</p><p id="stat-seca" class="indicador-valor text-2xl font-bold text-orange-700">0</p>
             </button>
         </section>
 
@@ -198,7 +263,7 @@
                             <th class="py-2.5 px-3">Pedido / Itens</th>
                             <th class="py-2.5 px-3">Cód. / Fornecedor</th>
                             <th class="py-2.5 px-3">Motorista</th>
-                            <th class="py-2.5 px-3">Data Coleta</th>
+                            <th class="py-2.5 px-3">Data do Embarque</th>
                             <th class="py-2.5 px-3">Hora Coleta</th>
                             <th class="py-2.5 px-3 text-center">Carregado</th>
                             <th class="py-2.5 px-3 font-semibold text-blue-600 bg-blue-50/50">📅 Prev. Chegada</th>
@@ -328,7 +393,7 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Data da Coleta</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Data do Embarque</label>
                         <input type="date" id="carga-data-coleta" onchange="calcularPrevisaoAutomaticamente()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                     <div>
@@ -339,7 +404,7 @@
 
                 <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg flex justify-end">
                     <div class="w-1/2">
-                        <label class="block text-xs font-bold text-blue-900 mb-1">Prev. Chegada</label>
+                        <label class="block text-xs font-bold text-blue-900 mb-1">Prev. Chegada <span class="font-normal text-blue-700">(DTENTREGA)</span></label>
                         <input type="date" id="carga-prev-chegada" class="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm font-semibold text-blue-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                 </div>
@@ -1424,6 +1489,82 @@
             return chave && row[chave] != null ? String(row[chave]).trim() : '-';
         }
 
+        // O ERP utiliza DTEMBARQUE e DTENTREGA. Os dados sao gravados
+        // como AAAA-MM-DD, formato utilizado pelo calendario e input type=date.
+        // Nao confundir data de entrega com quantidade entregue ou outra coluna.
+        function identificarColunaDataPedido(linhas, nomesAceitos) {
+            const colunas = [...new Set(linhas.slice(0, 30).flatMap(row => Object.keys(row)))];
+            for (const nome of nomesAceitos) {
+                const encontrada = colunas.find(coluna => normalizarTexto(coluna) === nome);
+                if (encontrada) return encontrada;
+            }
+            return '';
+        }
+
+        function dataISOValida(ano, mes, dia) {
+            const y = Number(ano), m = Number(mes), d = Number(dia);
+            if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d) || y < 1900 || y > 2200 || m < 1 || m > 12 || d < 1 || d > 31) return '';
+            const verificacao = new Date(Date.UTC(y, m - 1, d));
+            if (verificacao.getUTCFullYear() !== y || verificacao.getUTCMonth() !== m - 1 || verificacao.getUTCDate() !== d) return '';
+            return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        }
+
+        function converterDataPlanilhaParaISO(valor, usarData1904 = false) {
+            if (valor == null || valor === '') return '';
+            if (valor instanceof Date) {
+                if (Number.isNaN(valor.getTime())) return '';
+                return dataISOValida(valor.getUTCFullYear(), valor.getUTCMonth() + 1, valor.getUTCDate());
+            }
+            // Excel costuma guardar datas como numeros seriais (inclusive nas celulas
+            // formatadas visualmente como DD/MM/AAAA). Respeita pastas de 1904.
+            if (typeof valor === 'number' && Number.isFinite(valor)) {
+                if (valor <= 0) return '';
+                const decodificada = XLSX.SSF.parse_date_code(valor, { date1904: usarData1904 });
+                return decodificada ? dataISOValida(decodificada.y, decodificada.m, decodificada.d) : '';
+            }
+            const texto = String(valor).trim();
+            if (!texto) return '';
+            // Valores literais ISO (tambem aceita data/hora apos a parte da data).
+            let partes = texto.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:$|[T\s])/);
+            if (partes) return dataISOValida(partes[1], partes[2], partes[3]);
+            // Formato brasileiro DD/MM/AAAA ou DD-MM-AAAA, com hora opcional.
+            partes = texto.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})(?:$|[T\s])/);
+            if (partes) {
+                const ano = partes[3].length === 2 ? (Number(partes[3]) >= 50 ? 1900 : 2000) + Number(partes[3]) : Number(partes[3]);
+                return dataISOValida(ano, partes[2], partes[1]);
+            }
+            if (/^\d{4,6}(?:[.,]0+)?$/.test(texto)) {
+                const numero = Number(texto.replace(',', '.'));
+                const decodificada = XLSX.SSF.parse_date_code(numero, { date1904: usarData1904 });
+                return decodificada ? dataISOValida(decodificada.y, decodificada.m, decodificada.d) : '';
+            }
+            return '';
+        }
+
+        function extrairDatasDePedidos(linhas, obterPedido, workbook) {
+            const colunaEmbarque = identificarColunaDataPedido(linhas, ['DTEMBARQUE', 'DATAEMBARQUE', 'DATADEEMBARQUE']);
+            const colunaEntrega = identificarColunaDataPedido(linhas, ['DTENTREGA', 'DATAENTREGA', 'DATADEENTREGA']);
+            const data1904 = Boolean(workbook?.Workbook?.WBProps?.date1904);
+            const porPedido = new Map();
+            let invalidas = 0, divergentes = 0;
+            for (const row of linhas) {
+                const pedido = obterPedido(row);
+                if (!pedido) continue;
+                const datas = porPedido.get(pedido) || { embarque: '', entrega: '' };
+                for (const [campo, coluna] of [['embarque', colunaEmbarque], ['entrega', colunaEntrega]]) {
+                    if (!coluna) continue;
+                    const bruto = row[coluna];
+                    if (bruto == null || String(bruto).trim() === '') continue;
+                    const convertido = converterDataPlanilhaParaISO(bruto, data1904);
+                    if (!convertido) { invalidas++; continue; }
+                    if (!datas[campo]) datas[campo] = convertido;
+                    else if (datas[campo] !== convertido) divergentes++;
+                }
+                porPedido.set(pedido, datas);
+            }
+            return { porPedido, colunaEmbarque, colunaEntrega, invalidas, divergentes };
+        }
+
         function importarPlanilhaDeItens(event) {
             if (limpezaGeralEmAndamento) {
                 event.target.value = '';
@@ -1471,8 +1612,13 @@
                         aba.linhas.forEach(row => registrarFornecedor(obterPedido(row), extrairDadosFornecedor(row, colunas)));
                     });
 
+                    // Datas de cada pedido podem estar em uma ou em todas as linhas
+                    // dos itens. Agrupa para preencher apenas uma vez por pedido.
+                    const datasNaPlanilha = extrairDatasDePedidos(json, obterPedido, workbook);
                     const pedidosProcessadosNoArquivo = new Set();
                     const cargasAlteradasNoArquivo = new Set();
+                    const pedidosComEmbarque = new Set();
+                    const pedidosComEntrega = new Set();
                     let produtosAdicionados = 0;
                     let quantidadesSemValor = 0;
                     let novasCargasCriadas = 0;
@@ -1502,6 +1648,18 @@
                             novasCargasCriadas++;
                         }
                         if (!pedidosProcessadosNoArquivo.has(pedido)) {
+                            const datasDoPedido = datasNaPlanilha.porPedido.get(pedido);
+                            if (datasDoPedido?.embarque) {
+                                // Campo legado dataColeta preservado para compatibilidade
+                                // com pedidos antigos ja salvos no Firebase.
+                                carga.dataColeta = datasDoPedido.embarque;
+                                pedidosComEmbarque.add(pedido);
+                            }
+                            if (datasDoPedido?.entrega) {
+                                carga.prevChegada = datasDoPedido.entrega;
+                                carga.previsaoOrigem = 'planilha';
+                                pedidosComEntrega.add(pedido);
+                            }
                             const alterou = aplicarDadosFornecedorNaCarga(carga, dados, ufPlanilha);
                             const tipoDaLinha = normalizarTipoCarga(extrairValorColuna(row, ['tipodecarga', 'classificacaocarga']));
                             if (!carga.tipoCarga && tipoDaLinha && !fornecedoresPorCodigo.has(padronizarCodigoFornecedor(carga.codigoFornecedor))) carga.tipoCarga = tipoDaLinha;
@@ -1543,7 +1701,13 @@
                         `• Fornecedor e UF preenchidos: ${identificadas}\n` +
                         `• Pedidos atualizados: ${pedidosAtualizados}\n` +
                         `• Itens: ${produtosAdicionados} (quantidades: ${colunaQuantidade})\n` +
+                        `• Data do Embarque (DTEMBARQUE): ${pedidosComEmbarque.size} pedido(s)\n` +
+                        `• Prev. Chegada (DTENTREGA): ${pedidosComEntrega.size} pedido(s)\n` +
                         `• Novas cargas: ${novasCargasCriadas}`;
+                    if (!datasNaPlanilha.colunaEmbarque) msg += '\n⚠ Coluna DTEMBARQUE nao encontrada. Datas de embarque anteriores foram mantidas.';
+                    if (!datasNaPlanilha.colunaEntrega) msg += '\n⚠ Coluna DTENTREGA nao encontrada. Previsoes de chegada anteriores foram mantidas.';
+                    if (datasNaPlanilha.invalidas) msg += `\n⚠ ${datasNaPlanilha.invalidas} valor(es) de data invalido(s) ou nao reconhecido(s).`;
+                    if (datasNaPlanilha.divergentes) msg += `\n⚠ ${datasNaPlanilha.divergentes} data(s) divergente(s) para o mesmo pedido; foi mantida a primeira data valida.`;
                     if (pendentes.length) msg += `\n⚠ Sem fornecedor/UF: ${pendentes.length} pedido(s) (${pendentes.slice(0, 7).join(', ')}${pendentes.length > 7 ? ', ...' : ''}). Confira se a planilha possui código/nome do fornecedor.`;
                     if (semClassificacao.length) msg += `\n⚠ ${semClassificacao.length} pedido(s) aguardando frete ou tipo de carga (${semClassificacao.slice(0, 6).join(', ')}). Confira código do fornecedor e cadastro.`;
                     if (quantidadesSemValor) msg += `\n⚠ ${quantidadesSemValor} quantidade(s) em branco.`;
@@ -1586,6 +1750,9 @@
         }
 
         function calcularPrevisaoAutomaticamente() {
+            // A DTENTREGA informada pelo ERP tem prioridade absoluta: alterar
+            // UF, data/hora do embarque ou Horas Ref. nao pode substitui-la.
+            if (document.getElementById('carga-prev-chegada').dataset.origem === 'planilha') return;
             const dataColeta = document.getElementById('carga-data-coleta').value;
             const horaColeta = document.getElementById('carga-hora-coleta').value || '00:00';
             const refHoras = document.getElementById('carga-ref-horas').value;
@@ -1643,8 +1810,6 @@
              ['refrigerada',filtroCarga==='Refrigerada'],['seca',filtroCarga==='Seca']].forEach(([nome,ativo]) => {
                 const elemento = document.getElementById('indicador-' + nome);
                 elemento.setAttribute('aria-pressed',String(ativo));
-                elemento.classList.toggle('ring-2', ativo);
-                elemento.classList.toggle('ring-blue-500', ativo);
             });
         }
 
@@ -1926,6 +2091,7 @@
             document.getElementById('carga-tipo-carga').value = '';
             document.getElementById('carga-origem').value = '';
             document.getElementById('btn-excluir-carga').classList.add('hidden');
+            document.getElementById('carga-prev-chegada').dataset.origem = '';
             aoMudarOrigem();
             document.getElementById('modal-carga').classList.remove('hidden');
         }
@@ -1949,6 +2115,7 @@
             document.getElementById('carga-data-coleta').value = c.dataColeta || '';
             document.getElementById('carga-hora-coleta').value = c.horaColeta || '';
             document.getElementById('carga-prev-chegada').value = c.prevChegada || '';
+            document.getElementById('carga-prev-chegada').dataset.origem = c.previsaoOrigem || '';
 
             document.getElementById('btn-excluir-carga').classList.remove('hidden');
             document.getElementById('modal-carga').classList.remove('hidden');
@@ -1991,6 +2158,7 @@
                 dataColeta: document.getElementById('carga-data-coleta').value,
                 horaColeta: document.getElementById('carga-hora-coleta').value,
                 prevChegada: document.getElementById('carga-prev-chegada').value,
+                previsaoOrigem: document.getElementById('carga-prev-chegada').dataset.origem || '',
                 entrada: cargaExistente ? cargaExistente.entrada : false,
                 naPorta: cargaExistente ? cargaExistente.naPorta : false,
                 carregado: cargaExistente ? cargaExistente.carregado : false,

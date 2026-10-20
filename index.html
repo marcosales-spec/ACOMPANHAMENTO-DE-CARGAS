@@ -31,7 +31,7 @@
         <div class="max-w-[98%] mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="p-2 bg-blue-600 rounded-lg text-white">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 011 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4z"/></svg>
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4z"/></svg>
                 </div>
                 <div>
                     <h1 class="font-bold text-lg leading-tight">Acompanhamento de Cargas</h1>
@@ -108,7 +108,7 @@
                     <option value="CIF">CIF</option>
                 </select>
 
-                <!-- FILTRO DE ORIGEM COM TODOS OS ESTADOS DA LISTA -->
+                <!-- FILTRO DE ORIGEM -->
                 <select id="filter-origem" onchange="aplicarFiltros()" class="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer">
                     <option value="">Todas as Origens</option>
                     <option value="PR">PR - Paraná</option>
@@ -144,10 +144,7 @@
                             <th class="py-2.5 px-3">Motorista</th>
                             <th class="py-2.5 px-3">Data Coleta</th>
                             <th class="py-2.5 px-3">Hora Coleta</th>
-                            <th class="py-2.5 px-3">Fim Coleta</th>
-                            <th class="py-2.5 px-3">Hora Fim</th>
                             <th class="py-2.5 px-3 text-center">Carregado</th>
-                            <th class="py-2.5 px-3 font-semibold text-indigo-600 bg-indigo-50/50">Tempo Coleta</th>
                             <th class="py-2.5 px-3 font-semibold text-blue-600 bg-blue-50/50">📅 Prev. Chegada</th>
                             <th class="py-2.5 px-3 text-center">Entrada</th>
                             <th class="py-2.5 px-3 text-center">Na Porta</th>
@@ -221,7 +218,6 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Origem (UF)</label>
-                        <!-- LISTA DE ESTADOS ATUALIZADA -->
                         <select id="carga-origem" required onchange="aoMudarOrigem()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
                             <option value="PR">PR - Paraná</option>
                             <option value="GO">GO - Goiás</option>
@@ -269,23 +265,8 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Fim da Coleta</label>
-                        <input type="date" id="carga-fim-coleta" onchange="calcularPrevisaoAutomaticamente()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Hora Fim Coleta</label>
-                        <input type="time" id="carga-hora-fim-coleta" onchange="calcularPrevisaoAutomaticamente()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
-                </div>
-
-                <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-blue-900 mb-1">Tempo de Coleta</label>
-                        <input type="text" id="carga-tempo-coleta" readonly placeholder="--:--" class="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm font-semibold text-indigo-900 bg-white/80 focus:outline-none cursor-not-allowed">
-                    </div>
-                    <div>
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg flex justify-end">
+                    <div class="w-1/2">
                         <label class="block text-xs font-bold text-blue-900 mb-1">Prev. Chegada</label>
                         <input type="date" id="carga-prev-chegada" class="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm font-semibold text-blue-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
@@ -442,8 +423,6 @@
                                 motorista: motoristaPlanilha,
                                 dataColeta: '',
                                 horaColeta: '',
-                                fimColeta: '',
-                                horaFimColeta: '',
                                 prevChegada: '',
                                 entrada: false,
                                 naPorta: false,
@@ -524,47 +503,17 @@
         function calcularPrevisaoAutomaticamente() {
             const dataColeta = document.getElementById('carga-data-coleta').value;
             const horaColeta = document.getElementById('carga-hora-coleta').value || '00:00';
-            const fimColeta = document.getElementById('carga-fim-coleta').value;
-            const horaFimColeta = document.getElementById('carga-hora-fim-coleta').value || '00:00';
             const refHoras = document.getElementById('carga-ref-horas').value;
 
-            if (dataColeta && fimColeta) {
-                const dtInicio = new Date(`${dataColeta}T${horaColeta}`);
-                const dtFim = new Date(`${fimColeta}T${horaFimColeta}`);
-                const diffMs = dtFim - dtInicio;
-                if (diffMs >= 0) {
-                    const diffMinutosTotal = Math.floor(diffMs / (1000 * 60));
-                    const horas = Math.floor(diffMinutosTotal / 60);
-                    const minutos = diffMinutosTotal % 60;
-                    document.getElementById('carga-tempo-coleta').value = `${horas}h ${String(minutos).padStart(2, '0')}min`;
-                } else {
-                    document.getElementById('carga-tempo-coleta').value = 'Inválido';
-                }
-            } else {
-                document.getElementById('carga-tempo-coleta').value = '--:--';
-            }
+            if (!dataColeta) return;
 
-            if (!fimColeta) return;
-            const dtCalculo = new Date(`${fimColeta}T${horaFimColeta}`);
+            const dtCalculo = new Date(`${dataColeta}T${horaColeta}`);
             if (refHoras) {
                 const [horasAdd, minAdd] = refHoras.split(':').map(Number);
                 dtCalculo.setHours(dtCalculo.getHours() + (horasAdd || 0));
                 dtCalculo.setMinutes(dtCalculo.getMinutes() + (minAdd || 0));
             }
             document.getElementById('carga-prev-chegada').value = dtCalculo.toISOString().slice(0, 10);
-        }
-
-        function calcularTempoColetaTexto(d1, h1, d2, h2) {
-            if (!d1 || !d2) return '-';
-            try {
-                const inicio = new Date(`${d1}T${h1 || '00:00'}`);
-                const fim = new Date(`${d2}T${h2 || '00:00'}`);
-                const diffMs = fim - inicio;
-                if (diffMs < 0) return '-';
-                const h = Math.floor(diffMs / 3600000);
-                const m = Math.floor((diffMs % 3600000) / 60000);
-                return `${h}h ${String(m).padStart(2, '0')}m`;
-            } catch (e) { return '-'; }
         }
 
         function formatarData(dataStr) {
@@ -626,7 +575,7 @@
             tbody.innerHTML = '';
 
             if (filtradas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="16" class="py-8 text-center text-slate-400">Nenhuma carga cadastrada ou encontrada. Importe uma planilha para começar!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" class="py-8 text-center text-slate-400">Nenhuma carga cadastrada ou encontrada. Importe uma planilha para começar!</td></tr>`;
                 return;
             }
 
@@ -662,12 +611,9 @@
                     <td class="py-2.5 px-3 ${c.motorista === 'A PREENCHER' ? 'text-amber-600 italic font-semibold' : 'text-slate-600'}">${c.motorista}</td>
                     <td class="py-2.5 px-3 text-slate-600 font-medium">${formatarData(c.dataColeta)}</td>
                     <td class="py-2.5 px-3 text-slate-600 font-medium">${c.horaColeta || '-'}</td>
-                    <td class="py-2.5 px-3 text-slate-500">${formatarData(c.fimColeta)}</td>
-                    <td class="py-2.5 px-3 text-slate-500">${c.horaFimColeta || '-'}</td>
                     <td class="py-2.5 px-3 text-center">
                         <button onclick="toggleStatus('${c.id}', 'carregado')" class="px-2 py-0.5 rounded-full text-[11px] font-semibold cursor-pointer ${c.carregado ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${c.carregado ? 'SIM' : 'NÃO'}</button>
                     </td>
-                    <td class="py-2.5 px-3 text-indigo-700 font-bold bg-indigo-50/50">${calcularTempoColetaTexto(c.dataColeta, c.horaColeta, c.fimColeta, c.horaFimColeta)}</td>
                     
                     <td class="py-2 px-2 bg-blue-50/50">
                         <input type="date" value="${c.prevChegada || ''}" 
@@ -705,7 +651,7 @@
                     `).join('');
 
                     trFilha.innerHTML = `
-                        <td colspan="16" class="p-4 bg-slate-100/50">
+                        <td colspan="14" class="p-4 bg-slate-100/50">
                             <div class="max-w-2xl bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
                                 <h4 class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider flex items-center space-x-2">
                                     <span>📦 ITENS DO PEDIDO:</span>
@@ -821,7 +767,7 @@
                 cell.innerHTML = `
                     <div class="flex items-center justify-between mb-1.5 pb-1 border-b border-slate-100">
                         <span class="text-xs font-bold ${ehHoje ? 'bg-blue-600 text-white px-2 py-0.5 rounded-full' : 'text-slate-700'}">${dataObj.getDate()}</span>
-                        ${cargasDoDia.length > 0 ? `<span class="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-full">${cargasDoDia.length} ${cargasDoDia.length === 1 ? 'carga' : 'cargas'}</span>` : ''}
+                        ${cargasDoDia.length > 0 ? `<span class="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-full">${cargasDoDia.length}${cargasDoDia.length === 1 ? 'carga' : 'cargas'}</span>` : ''}
                     </div>
                     <div class="flex-1 overflow-y-auto custom-scrollbar max-h-[140px] space-y-1">
                         ${htmlCargas}
@@ -871,8 +817,6 @@
             document.getElementById('carga-motorista').value = c.motorista === 'A PREENCHER' ? '' : c.motorista;
             document.getElementById('carga-data-coleta').value = c.dataColeta || '';
             document.getElementById('carga-hora-coleta').value = c.horaColeta || '';
-            document.getElementById('carga-fim-coleta').value = c.fimColeta || '';
-            document.getElementById('carga-hora-fim-coleta').value = c.horaFimColeta || '';
             document.getElementById('carga-prev-chegada').value = c.prevChegada || '';
 
             document.getElementById('btn-excluir-carga').classList.remove('hidden');
@@ -906,8 +850,6 @@
                 motorista: document.getElementById('carga-motorista').value || 'A PREENCHER',
                 dataColeta: document.getElementById('carga-data-coleta').value,
                 horaColeta: document.getElementById('carga-hora-coleta').value,
-                fimColeta: document.getElementById('carga-fim-coleta').value,
-                horaFimColeta: document.getElementById('carga-hora-fim-coleta').value,
                 prevChegada: document.getElementById('carga-prev-chegada').value,
                 entrada: cargaExistente ? cargaExistente.entrada : false,
                 naPorta: cargaExistente ? cargaExistente.naPorta : false,

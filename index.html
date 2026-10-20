@@ -51,6 +51,19 @@
                     </button>
                 </div>
 
+                <!-- BACKUP ACESSÍVEL SEM FAIXA FIXA DE SINCRONIZAÇÃO -->
+                <details class="relative" id="menu-backup">
+                    <summary class="list-none cursor-pointer text-xs font-semibold rounded-lg px-3 py-2 border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-100">💾 Backup ▾</summary>
+                    <div class="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-xl p-2 z-50 flex flex-col gap-2 text-xs text-slate-800">
+                        <button type="button" onclick="baixarBackupJSON()" class="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-left rounded">⬇ Baixar backup JSON</button>
+                        <button type="button" onclick="document.getElementById('input-restaurar-backup').click()" class="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-left rounded">⬆ Restaurar backup JSON</button>
+                        <button type="button" id="btn-recuperar-local" onclick="recuperarBackupLocal()" class="hidden px-3 py-2 bg-amber-100 text-amber-900 text-left rounded">Recuperar backup local</button>
+                        <button type="button" id="btn-usar-nuvem-vazia" onclick="ignorarBackupLocal()" class="hidden px-3 py-2 bg-slate-100 text-left rounded">Manter dados da nuvem</button>
+                        <button type="button" id="btn-tentar-sync" onclick="tentarSincronizar()" class="hidden px-3 py-2 bg-blue-100 text-blue-800 text-left rounded">Tentar sincronizar</button>
+                    </div>
+                </details>
+                <input id="input-restaurar-backup" type="file" accept=".json,application/json" onchange="importarBackupJSON(event)" class="hidden">
+
                 <!-- INPUT INVISÍVEL PARA ARQUIVO -->
                 <input type="file" id="input-importar-itens" accept=".xlsx, .xls, .csv" class="hidden" onchange="importarPlanilhaDeItens(event)">
                 
@@ -68,19 +81,11 @@
 
     <main class="flex-1 max-w-[98%] w-full mx-auto px-2 py-6 space-y-6">
 
-        <!-- Persistência: status real da nuvem e cópia local de emergência -->
-        <section id="sync-banner" role="status" aria-live="polite" class="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs shadow-sm">
-            <div class="flex items-center gap-2 min-w-0">
-                <span id="sync-symbol" class="text-base">⏳</span>
-                <span id="sync-text" class="font-semibold">Conectando ao Firebase. Verificando os pedidos salvos...</span>
-            </div>
-            <div class="flex flex-wrap gap-2 items-center">
-                <button type="button" id="btn-recuperar-local" onclick="recuperarBackupLocal()" class="hidden px-2.5 py-1.5 bg-amber-600 text-white rounded font-semibold hover:bg-amber-700">Recuperar backup local</button>
-                <button type="button" id="btn-usar-nuvem-vazia" onclick="ignorarBackupLocal()" class="hidden px-2.5 py-1.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold">Manter nuvem vazia</button>
-                <button type="button" onclick="tentarSincronizar()" id="btn-tentar-sync" class="hidden px-2.5 py-1.5 bg-blue-600 text-white rounded font-semibold">Tentar sincronizar</button>
-                <button type="button" onclick="baixarBackupJSON()" class="px-2.5 py-1.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-50">⬇ Backup JSON</button>
-                <button type="button" onclick="document.getElementById('input-restaurar-backup').click()" class="px-2.5 py-1.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-50">⬆ Importar backup</button>
-                <input id="input-restaurar-backup" type="file" accept=".json,application/json" onchange="importarBackupJSON(event)" class="hidden">
+        <!-- Exibe apenas avisos críticos; nenhum aviso de sucesso do Firebase ocupa a tela. -->
+        <section id="sync-banner" role="alert" aria-live="polite" class="hidden border rounded-xl px-4 py-3 text-xs shadow-sm">
+            <div class="flex items-center gap-2">
+                <span id="sync-symbol" class="text-base">⚠️</span>
+                <span id="sync-text" class="font-semibold"></span>
             </div>
         </section>
 
@@ -157,7 +162,7 @@
                         <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
                             <th class="py-2.5 px-3 text-center">Ações</th>
                             <th class="py-2.5 px-3">Frete</th>
-                            <th class="py-2.5 px-3">Cidade / UF de origem</th>
+                            <th class="py-2.5 px-3">UF de origem</th>
                             <th class="py-2.5 px-3">Pedido / Itens</th>
                             <th class="py-2.5 px-3">Cód. / Fornecedor</th>
                             <th class="py-2.5 px-3">Motorista</th>
@@ -236,7 +241,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Estado de origem (UF)</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">UF de origem</label>
                         <select id="carga-origem" required onchange="aoMudarOrigem()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
                             <option value="">Selecione a UF</option>
                             <option value="PR">PR - Paraná</option>
@@ -283,17 +288,6 @@
                         <input type="text" id="carga-motorista" placeholder="Nome do motorista" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Cidade de origem da carga</label>
-                        <input type="text" id="carga-cidade-origem" oninput="atualizarAvisoCidade()" placeholder="Ex.: São Miguel do Iguaçu" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                        <p id="cidade-origem-aviso" class="mt-1 text-[11px] text-amber-700">Confirme a cidade real da coleta.</p>
-                    </div>
-                    <div class="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-3 text-xs text-slate-600">
-                        Ao informar o código ou selecionar o fornecedor, o sistema associa a cidade e a UF. É possível corrigir a cidade para a unidade de onde a carga realmente sairá.
-                    </div>
-                </div>
-
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Data da Coleta</label>
@@ -326,92 +320,90 @@
 
     <!-- SCRIPT DA APLICAÇÃO -->
     <script>
-        // CATÁLOGO DE FORNECEDORES (código interno, nome, UF e cidade de referência).
-        // Cidades em branco requerem confirmação do ponto real de coleta.
-        // A cidade de referência de uma empresa não garante que a carga sairá daquela unidade.
+        // CATÁLOGO DE FORNECEDORES (código interno, nome e UF).
         const FORNECEDORES = [
-            {"codigo": "3518", "nome": "FRIGORIFICO FRIELLA LTDA *", "uf": "PR", "cidade": "São Miguel do Iguaçu"},
-            {"codigo": "1677", "nome": "LATICINIO MINAS GERAIS LTDA.", "uf": "MG", "cidade": "Ituiutaba"},
-            {"codigo": "22", "nome": "COOPERATIVA AGROINDUSTRIAL LAR*", "uf": "PR", "cidade": "Medianeira"},
-            {"codigo": "5557", "nome": "ROSA BRANCA DM INDUSTRIA, ATACADO, DISTRIBUIDOR & LOGISTICA", "uf": "TO", "cidade": "Porto Nacional"},
-            {"codigo": "28", "nome": "PALHA IND.E COM.DE ALIM.LTDA *", "uf": "PR", "cidade": "Ibiporã"},
-            {"codigo": "4048", "nome": "AMC INDUSTRIA E COMERCIO DE ALIMENTOS LTDA", "uf": "PR", "cidade": ""},
-            {"codigo": "13", "nome": "NUTRIZA AGROINDUSTRIAL DE ALIMENTOS S/A", "uf": "GO", "cidade": "Pires do Rio"},
-            {"codigo": "5322", "nome": "PLUSVAL AGROAVICOLA LTDA", "uf": "PR", "cidade": "Iporã"},
-            {"codigo": "1680", "nome": "BEM BRASIL ALIMENTOS LTDA", "uf": "MG", "cidade": "Araxá"},
-            {"codigo": "2032", "nome": "BEM BRASIL ALIMENTOS LTDA", "uf": "MG", "cidade": "Araxá"},
-            {"codigo": "6778", "nome": "LFB COMERCIO DE CARNES LTDA", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "3458", "nome": "CERRADO FOODS LTDA", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "4912", "nome": "ATACADAO (CESAMAR) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "1250", "nome": "FUGINI ALIMENTOS LTDA", "uf": "GO", "cidade": "Cristalina"},
-            {"codigo": "4552", "nome": "CREMOLAT INDUSTRIA E COMERCIO DE LATICINIOS LTDA", "uf": "TO", "cidade": "Bernardo Sayão"},
-            {"codigo": "5484", "nome": "ATACADAO (TEOTONIO) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "5977", "nome": "ZANLORENZI BEBIDAS LTDA", "uf": "PR", "cidade": "Campo Largo"},
-            {"codigo": "27", "nome": "N. ZEPPONE S.A.*", "uf": "PR", "cidade": "Japurá"},
-            {"codigo": "4", "nome": "IND.E COM.DE CARNES E DERIVADOS BOI BRASIL", "uf": "TO", "cidade": ""},
-            {"codigo": "2922", "nome": "REGRA DISTRIBUIDORA DE PRODUTOS - EIRELI", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "5499", "nome": "COOPAVEL COOPERATIVA AGROINDUSTRIAL", "uf": "PR", "cidade": "Cascavel"},
-            {"codigo": "18", "nome": "COOPAVEL COOP.AGROINDUSTRIAL-FRISUINOS *", "uf": "PR", "cidade": "Cascavel"},
-            {"codigo": "3881", "nome": "LATICINIOS BELA VISTA", "uf": "GO", "cidade": "Bela Vista de Goiás"},
-            {"codigo": "5528", "nome": "SANTA HELENA INDUSTRIA DE ALIMENTOS S/A", "uf": "SP", "cidade": "Ribeirão Preto"},
-            {"codigo": "5576", "nome": "CEREALISTA SANTA FE LTDA", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "3877", "nome": "GIGANTE CASH & CARRY COMERCIO DE ALIMENTOS LTDA.", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "29", "nome": "W.W.SOARES", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "5558", "nome": "INDUSTRIA E COMERCIO DE CARNES E DERIVADOS BOI BRASIL LTDA", "uf": "TO", "cidade": ""},
-            {"codigo": "4388", "nome": "REDE BRASIL DISTRIBUICAO E LOGISTICA LTDA", "uf": "TO", "cidade": ""},
-            {"codigo": "5071", "nome": "BEBIDAS GRASSI DO BRASIL LTDA", "uf": "SC", "cidade": "Tubarão"},
-            {"codigo": "6079", "nome": "JURUPINGA", "uf": "PR", "cidade": "Campo Largo"},
-            {"codigo": "5618", "nome": "PRO-VAREJO DISTRIBUIDORA LTDA", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "418", "nome": "COSTA SUL PESCADOS S/A *", "uf": "SC", "cidade": "Navegantes"},
-            {"codigo": "2865", "nome": "IND.COM.PRODS.ALIMS.CEPERA LTDA", "uf": "SP", "cidade": ""},
-            {"codigo": "1466", "nome": "BRF-BRASIL FOODS S.A", "uf": "TO", "cidade": ""},
-            {"codigo": "3028", "nome": "SO FRUTA ALIMENTOS LTDA", "uf": "SP", "cidade": "Guaíra"},
-            {"codigo": "4108", "nome": "PASTIFICIO SELMI SA", "uf": "SP", "cidade": "Sumaré"},
-            {"codigo": "4109", "nome": "ASSAI (CESAMAR) SENDAS DISTRIBUIDORA S/A", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "6569", "nome": "FORT-FRIGO FOODS LTDA", "uf": "PR", "cidade": "Campo Magro"},
-            {"codigo": "5174", "nome": "SCALON E CERCHI LTDA", "uf": "MG", "cidade": "Patrocínio"},
-            {"codigo": "2906", "nome": "CRISTALCOPO DESCARTAVEIS S/A", "uf": "SC", "cidade": "Içara"},
-            {"codigo": "5318", "nome": "ITALIA COMERCIO E DISTRIB", "uf": "SC", "cidade": ""},
-            {"codigo": "4865", "nome": "LIDERA INDUSTRIA E COMERCIO DE BEBIDAS LTDA", "uf": "SP", "cidade": "Bauru"},
-            {"codigo": "2760", "nome": "ASSAI (TEOTONIO) SENDAS DISTRIBUIDORA S/A", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "2106", "nome": "RIO BRANCO ALIMENTOS S/A", "uf": "MG", "cidade": "Visconde do Rio Branco"},
-            {"codigo": "534", "nome": "ESPETOS AUREA", "uf": "TO", "cidade": ""},
-            {"codigo": "5912", "nome": "NATURAL PORK ALIMENTOS S.A.", "uf": "MT", "cidade": "Nova Mutum"},
-            {"codigo": "5684", "nome": "JAGUAFRANGOS INDUSTRIA E COMERCIO DE ALIMENTOS LTDA", "uf": "PR", "cidade": "Rondon"},
-            {"codigo": "5595", "nome": "JALAPAO INDUSTRIA COMERCIO E DISTRIBUICAO DE ALIMENTOS LTDA", "uf": "TO", "cidade": "Paraíso do Tocantins"},
-            {"codigo": "5596", "nome": "DROGARIAS ULTRA POPULAR AB LTDA", "uf": "TO", "cidade": ""},
-            {"codigo": "2986", "nome": "JANDIRA COM. DE PROD. ALIMENTICIOS LTDA", "uf": "TO", "cidade": "Gurupi"},
-            {"codigo": "5808", "nome": "MENDES ALIMENTOS LIMITADA", "uf": "GO", "cidade": "Anápolis"},
-            {"codigo": "4866", "nome": "ATACADAO (RODOVIARIA) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "4474", "nome": "CRISTALCOPO S/A", "uf": "PE", "cidade": "Pombos"},
-            {"codigo": "6124", "nome": "ECOFISH INDUSTRIA DE PESCADOS LTDA", "uf": "MG", "cidade": "Uberlândia"},
-            {"codigo": "6301", "nome": "FORTALEZA CEREALISTA LTDA", "uf": "TO", "cidade": "Lagoa da Confusão"},
-            {"codigo": "6550", "nome": "ANICUNS S/A ALCOOL E DERIVADOS", "uf": "GO", "cidade": "Anicuns"},
-            {"codigo": "5579", "nome": "GOLCALVES E TORTOLA SA", "uf": "PR", "cidade": ""},
-            {"codigo": "3144", "nome": "F PAULO NETO EIRELI EPP", "uf": "TO", "cidade": ""},
-            {"codigo": "5625", "nome": "QUALICOCO LTDA", "uf": "AL", "cidade": "Barra de São Miguel"},
-            {"codigo": "2105", "nome": "RIO BRANCO ALIMENTOS S/A", "uf": "MG", "cidade": "Visconde do Rio Branco"},
-            {"codigo": "5614", "nome": "VALE VERDE EMPREEDIMENTOS AGRICOLAS LTDA", "uf": "GO", "cidade": "Itapuranga"},
-            {"codigo": "5566", "nome": "NATURE INDUSTRIA COMERCIO E EXPORTACAO LTDA", "uf": "BA", "cidade": "Aurelino Leal"},
-            {"codigo": "982", "nome": "SUPER MELLO ATACADISTA DE ALIMENTOS LTDA", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "362", "nome": "CARLOS MAGNO MARTINS LEAL LTDA", "uf": "TO", "cidade": ""},
-            {"codigo": "30", "nome": "W. W. SOARES", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "5644", "nome": "FRIGORIFICO CALAFATE LTDA", "uf": "MG", "cidade": "Belo Horizonte"},
-            {"codigo": "5556", "nome": "FRIGORIFICO JATOBA LTDA", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "6269", "nome": "GOIASMINAS INDUSTRIA DE LATICINIOS LTDA", "uf": "GO", "cidade": "Itumbiara"},
-            {"codigo": "6277", "nome": "ABATEDOURO COROAVES LTDA", "uf": "PR", "cidade": "Presidente Castelo Branco"},
-            {"codigo": "6225", "nome": "BEM FRUTTA ATACADO E DISTRIBUIDOR DE ALIMENTOS", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "239", "nome": "BRF-BRASIL FOODS S.A", "uf": "GO", "cidade": ""},
-            {"codigo": "5469", "nome": "C.VALE - COOPERATIVA AGROINDUSTRIAL", "uf": "PR", "cidade": "Palotina"},
-            {"codigo": "4688", "nome": "PERNOD RICARD BRASIL INDUSTRIA E COMERCIO LTDA", "uf": "MG", "cidade": "Extrema"},
-            {"codigo": "4645", "nome": "CELM - AQUICULTURA S/A", "uf": "CE", "cidade": "Aracati"},
-            {"codigo": "4320", "nome": "ZANLORENZI BEBIDAS LTDA", "uf": "PR", "cidade": "Campo Largo"},
-            {"codigo": "5471", "nome": "C.VALE - COOPERATIVA AGROINDUSTRIAL", "uf": "PR", "cidade": "Palotina"},
-            {"codigo": "5402", "nome": "RIVIERA PESCADOS LTDA", "uf": "MG", "cidade": "Perdizes"},
-            {"codigo": "6041", "nome": "POLMAR", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "5971", "nome": "BRF S.A.", "uf": "MT", "cidade": ""},
-            {"codigo": "5562", "nome": "L' MARK INDUSTRIAL LTDA", "uf": "TO", "cidade": "Palmas"},
-            {"codigo": "4063", "nome": "SANCHEZ CANO LTDA", "uf": "SP", "cidade": "Jundiaí"}
+            {"codigo": "3518", "nome": "FRIGORIFICO FRIELLA LTDA *", "uf": "PR"},
+            {"codigo": "1677", "nome": "LATICINIO MINAS GERAIS LTDA.", "uf": "MG"},
+            {"codigo": "22", "nome": "COOPERATIVA AGROINDUSTRIAL LAR*", "uf": "PR"},
+            {"codigo": "5557", "nome": "ROSA BRANCA DM INDUSTRIA, ATACADO, DISTRIBUIDOR & LOGISTICA", "uf": "TO"},
+            {"codigo": "28", "nome": "PALHA IND.E COM.DE ALIM.LTDA *", "uf": "PR"},
+            {"codigo": "4048", "nome": "AMC INDUSTRIA E COMERCIO DE ALIMENTOS LTDA", "uf": "PR"},
+            {"codigo": "13", "nome": "NUTRIZA AGROINDUSTRIAL DE ALIMENTOS S/A", "uf": "GO"},
+            {"codigo": "5322", "nome": "PLUSVAL AGROAVICOLA LTDA", "uf": "PR"},
+            {"codigo": "1680", "nome": "BEM BRASIL ALIMENTOS LTDA", "uf": "MG"},
+            {"codigo": "2032", "nome": "BEM BRASIL ALIMENTOS LTDA", "uf": "MG"},
+            {"codigo": "6778", "nome": "LFB COMERCIO DE CARNES LTDA", "uf": "TO"},
+            {"codigo": "3458", "nome": "CERRADO FOODS LTDA", "uf": "TO"},
+            {"codigo": "4912", "nome": "ATACADAO (CESAMAR) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO"},
+            {"codigo": "1250", "nome": "FUGINI ALIMENTOS LTDA", "uf": "GO"},
+            {"codigo": "4552", "nome": "CREMOLAT INDUSTRIA E COMERCIO DE LATICINIOS LTDA", "uf": "TO"},
+            {"codigo": "5484", "nome": "ATACADAO (TEOTONIO) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO"},
+            {"codigo": "5977", "nome": "ZANLORENZI BEBIDAS LTDA", "uf": "PR"},
+            {"codigo": "27", "nome": "N. ZEPPONE S.A.*", "uf": "PR"},
+            {"codigo": "4", "nome": "IND.E COM.DE CARNES E DERIVADOS BOI BRASIL", "uf": "TO"},
+            {"codigo": "2922", "nome": "REGRA DISTRIBUIDORA DE PRODUTOS - EIRELI", "uf": "TO"},
+            {"codigo": "5499", "nome": "COOPAVEL COOPERATIVA AGROINDUSTRIAL", "uf": "PR"},
+            {"codigo": "18", "nome": "COOPAVEL COOP.AGROINDUSTRIAL-FRISUINOS *", "uf": "PR"},
+            {"codigo": "3881", "nome": "LATICINIOS BELA VISTA", "uf": "GO"},
+            {"codigo": "5528", "nome": "SANTA HELENA INDUSTRIA DE ALIMENTOS S/A", "uf": "SP"},
+            {"codigo": "5576", "nome": "CEREALISTA SANTA FE LTDA", "uf": "TO"},
+            {"codigo": "3877", "nome": "GIGANTE CASH & CARRY COMERCIO DE ALIMENTOS LTDA.", "uf": "TO"},
+            {"codigo": "29", "nome": "W.W.SOARES", "uf": "TO"},
+            {"codigo": "5558", "nome": "INDUSTRIA E COMERCIO DE CARNES E DERIVADOS BOI BRASIL LTDA", "uf": "TO"},
+            {"codigo": "4388", "nome": "REDE BRASIL DISTRIBUICAO E LOGISTICA LTDA", "uf": "TO"},
+            {"codigo": "5071", "nome": "BEBIDAS GRASSI DO BRASIL LTDA", "uf": "SC"},
+            {"codigo": "6079", "nome": "JURUPINGA", "uf": "PR"},
+            {"codigo": "5618", "nome": "PRO-VAREJO DISTRIBUIDORA LTDA", "uf": "TO"},
+            {"codigo": "418", "nome": "COSTA SUL PESCADOS S/A *", "uf": "SC"},
+            {"codigo": "2865", "nome": "IND.COM.PRODS.ALIMS.CEPERA LTDA", "uf": "SP"},
+            {"codigo": "1466", "nome": "BRF-BRASIL FOODS S.A", "uf": "TO"},
+            {"codigo": "3028", "nome": "SO FRUTA ALIMENTOS LTDA", "uf": "SP"},
+            {"codigo": "4108", "nome": "PASTIFICIO SELMI SA", "uf": "SP"},
+            {"codigo": "4109", "nome": "ASSAI (CESAMAR) SENDAS DISTRIBUIDORA S/A", "uf": "TO"},
+            {"codigo": "6569", "nome": "FORT-FRIGO FOODS LTDA", "uf": "PR"},
+            {"codigo": "5174", "nome": "SCALON E CERCHI LTDA", "uf": "MG"},
+            {"codigo": "2906", "nome": "CRISTALCOPO DESCARTAVEIS S/A", "uf": "SC"},
+            {"codigo": "5318", "nome": "ITALIA COMERCIO E DISTRIB", "uf": "SC"},
+            {"codigo": "4865", "nome": "LIDERA INDUSTRIA E COMERCIO DE BEBIDAS LTDA", "uf": "SP"},
+            {"codigo": "2760", "nome": "ASSAI (TEOTONIO) SENDAS DISTRIBUIDORA S/A", "uf": "TO"},
+            {"codigo": "2106", "nome": "RIO BRANCO ALIMENTOS S/A", "uf": "MG"},
+            {"codigo": "534", "nome": "ESPETOS AUREA", "uf": "TO"},
+            {"codigo": "5912", "nome": "NATURAL PORK ALIMENTOS S.A.", "uf": "MT"},
+            {"codigo": "5684", "nome": "JAGUAFRANGOS INDUSTRIA E COMERCIO DE ALIMENTOS LTDA", "uf": "PR"},
+            {"codigo": "5595", "nome": "JALAPAO INDUSTRIA COMERCIO E DISTRIBUICAO DE ALIMENTOS LTDA", "uf": "TO"},
+            {"codigo": "5596", "nome": "DROGARIAS ULTRA POPULAR AB LTDA", "uf": "TO"},
+            {"codigo": "2986", "nome": "JANDIRA COM. DE PROD. ALIMENTICIOS LTDA", "uf": "TO"},
+            {"codigo": "5808", "nome": "MENDES ALIMENTOS LIMITADA", "uf": "GO"},
+            {"codigo": "4866", "nome": "ATACADAO (RODOVIARIA) WMS SUPERMERCADOS DO BRASIL LTDA", "uf": "TO"},
+            {"codigo": "4474", "nome": "CRISTALCOPO S/A", "uf": "PE"},
+            {"codigo": "6124", "nome": "ECOFISH INDUSTRIA DE PESCADOS LTDA", "uf": "MG"},
+            {"codigo": "6301", "nome": "FORTALEZA CEREALISTA LTDA", "uf": "TO"},
+            {"codigo": "6550", "nome": "ANICUNS S/A ALCOOL E DERIVADOS", "uf": "GO"},
+            {"codigo": "5579", "nome": "GOLCALVES E TORTOLA SA", "uf": "PR"},
+            {"codigo": "3144", "nome": "F PAULO NETO EIRELI EPP", "uf": "TO"},
+            {"codigo": "5625", "nome": "QUALICOCO LTDA", "uf": "AL"},
+            {"codigo": "2105", "nome": "RIO BRANCO ALIMENTOS S/A", "uf": "MG"},
+            {"codigo": "5614", "nome": "VALE VERDE EMPREEDIMENTOS AGRICOLAS LTDA", "uf": "GO"},
+            {"codigo": "5566", "nome": "NATURE INDUSTRIA COMERCIO E EXPORTACAO LTDA", "uf": "BA"},
+            {"codigo": "982", "nome": "SUPER MELLO ATACADISTA DE ALIMENTOS LTDA", "uf": "TO"},
+            {"codigo": "362", "nome": "CARLOS MAGNO MARTINS LEAL LTDA", "uf": "TO"},
+            {"codigo": "30", "nome": "W. W. SOARES", "uf": "TO"},
+            {"codigo": "5644", "nome": "FRIGORIFICO CALAFATE LTDA", "uf": "MG"},
+            {"codigo": "5556", "nome": "FRIGORIFICO JATOBA LTDA", "uf": "TO"},
+            {"codigo": "6269", "nome": "GOIASMINAS INDUSTRIA DE LATICINIOS LTDA", "uf": "GO"},
+            {"codigo": "6277", "nome": "ABATEDOURO COROAVES LTDA", "uf": "PR"},
+            {"codigo": "6225", "nome": "BEM FRUTTA ATACADO E DISTRIBUIDOR DE ALIMENTOS", "uf": "TO"},
+            {"codigo": "239", "nome": "BRF-BRASIL FOODS S.A", "uf": "GO"},
+            {"codigo": "5469", "nome": "C.VALE - COOPERATIVA AGROINDUSTRIAL", "uf": "PR"},
+            {"codigo": "4688", "nome": "PERNOD RICARD BRASIL INDUSTRIA E COMERCIO LTDA", "uf": "MG"},
+            {"codigo": "4645", "nome": "CELM - AQUICULTURA S/A", "uf": "CE"},
+            {"codigo": "4320", "nome": "ZANLORENZI BEBIDAS LTDA", "uf": "PR"},
+            {"codigo": "5471", "nome": "C.VALE - COOPERATIVA AGROINDUSTRIAL", "uf": "PR"},
+            {"codigo": "5402", "nome": "RIVIERA PESCADOS LTDA", "uf": "MG"},
+            {"codigo": "6041", "nome": "POLMAR", "uf": "TO"},
+            {"codigo": "5971", "nome": "BRF S.A.", "uf": "MT"},
+            {"codigo": "5562", "nome": "L' MARK INDUSTRIAL LTDA", "uf": "TO"},
+            {"codigo": "4063", "nome": "SANCHEZ CANO LTDA", "uf": "SP"}
         ];
 
         const fornecedoresPorCodigo = new Map(FORNECEDORES.map(f => [f.codigo, f]));
@@ -421,25 +413,34 @@
                 .toUpperCase().replace(/[^A-Z0-9]/g, '');
         }
 
-        // Prioriza o código do fornecedor. Nomes repetidos são tratados com cautela.
+        // Resolve pelo código antes do nome. Códigos repetidos em nomes iguais não são inventados.
+        function fornecedoresComMesmoNome(nome) {
+            const normalizado = normalizarTexto(nome);
+            if (!normalizado || normalizado === 'APREENCHER') return [];
+            const exatos = FORNECEDORES.filter(f => normalizarTexto(f.nome) === normalizado);
+            if (exatos.length) return exatos;
+            // Aceita nomes abreviados apenas se a correspondência não for ambígua.
+            if (normalizado.length < 6) return [];
+            return FORNECEDORES.filter(f => {
+                const nomeCadastro = normalizarTexto(f.nome);
+                return nomeCadastro.includes(normalizado) || normalizado.includes(nomeCadastro);
+            });
+        }
+
         function localizarFornecedor(codigo, nome, uf = '') {
             const porCodigo = fornecedoresPorCodigo.get(String(codigo || '').trim());
             if (porCodigo) return porCodigo;
-            const nomeNorm = normalizarTexto(nome);
-            if (!nomeNorm || nomeNorm === 'APREENCHER') return null;
-            const encontrados = FORNECEDORES.filter(f => normalizarTexto(f.nome) === nomeNorm);
+            const encontrados = fornecedoresComMesmoNome(nome);
             const compativeis = uf ? encontrados.filter(f => f.uf === uf) : encontrados;
             const candidatos = compativeis.length ? compativeis : encontrados;
-            if (!candidatos.length) return null;
-            // Nomes duplicados só podem ser associados automaticamente quando a origem coincide.
-            if (candidatos.length > 1 && !candidatos.every(f => f.uf === candidatos[0].uf && f.cidade === candidatos[0].cidade)) return null;
-            return candidatos[0];
+            // Nunca escolhe arbitrariamente entre vários códigos.
+            return candidatos.length === 1 ? candidatos[0] : null;
         }
 
-        function obterCidadeCarga(c) {
-            if (c.cidadeOrigem) return c.cidadeOrigem;
-            const f = localizarFornecedor(c.codigoFornecedor, c.fornecedor, c.origem);
-            return f && (!c.origem || f.uf === c.origem) ? f.cidade : '';
+        function ufPorNomeFornecedor(nome) {
+            const encontrados = fornecedoresComMesmoNome(nome);
+            return encontrados.length && encontrados.every(f => f.uf === encontrados[0].uf)
+                ? encontrados[0].uf : '';
         }
 
         function enriquecerCarga(c) {
@@ -447,22 +448,18 @@
             if (!f) return c;
             return {
                 ...c,
-                // Não altera um código que não seja conhecido nem uma origem já digitada pelo usuário.
-                codigoFornecedor: c.codigoFornecedor || (
-                    FORNECEDORES.filter(item => normalizarTexto(item.nome) === normalizarTexto(c.fornecedor)).length === 1
-                        ? f.codigo : ''),
-                origem: c.origem || f.uf,
-                fornecedor: (!c.fornecedor || c.fornecedor === 'A PREENCHER') ? f.nome : c.fornecedor,
-                cidadeOrigem: c.cidadeOrigem || ((!c.origem || c.origem === f.uf) ? f.cidade : '')
+                codigoFornecedor: c.codigoFornecedor || f.codigo,
+                origem: ((!c.fornecedor || normalizarTexto(c.fornecedor) === 'APREENCHER') && c.codigoFornecedor) ? f.uf : (c.origem || f.uf),
+                fornecedor: (!c.fornecedor || normalizarTexto(c.fornecedor) === 'APREENCHER') ? f.nome : c.fornecedor
             };
         }
 
         function preencherListasFornecedores() {
             document.getElementById('lista-codigos-fornecedores').innerHTML = FORNECEDORES.map(f =>
-                `<option value="${f.codigo}" label="${f.nome} - ${f.cidade || 'Cidade a confirmar'}/${f.uf}"></option>`
+                `<option value="${f.codigo}" label="${escaparAtributoHTML(f.nome)} - ${f.uf}"></option>`
             ).join('');
             document.getElementById('lista-nomes-fornecedores').innerHTML =
-                [...new Set(FORNECEDORES.map(f => f.nome))].map(nome => `<option value="${nome.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"></option>`).join('');
+                [...new Set(FORNECEDORES.map(f => f.nome))].map(nome => `<option value="${escaparAtributoHTML(nome)}"></option>`).join('');
         }
 
         function preencherDadosFornecedor(f, definirCodigo = true) {
@@ -470,9 +467,7 @@
             if (definirCodigo) document.getElementById('carga-codigo-fornecedor').value = f.codigo;
             document.getElementById('carga-fornecedor').value = f.nome;
             document.getElementById('carga-origem').value = f.uf;
-            document.getElementById('carga-cidade-origem').value = f.cidade;
             aoMudarOrigem();
-            atualizarAvisoCidade();
         }
 
         function aoAlterarCodigoFornecedor() {
@@ -487,27 +482,18 @@
             const fornecedorAnterior = fornecedoresPorCodigo.get(codigoAtual);
             if (fornecedorAnterior && normalizarTexto(fornecedorAnterior.nome) !== normalizarTexto(nome)) {
                 document.getElementById('carga-codigo-fornecedor').value = '';
-                if (document.getElementById('carga-cidade-origem').value === fornecedorAnterior.cidade) {
-                    document.getElementById('carga-cidade-origem').value = '';
-                }
-                atualizarAvisoCidade();
             }
             const uf = document.getElementById('carga-origem').value;
             const f = localizarFornecedor('', nome, uf);
-            if (!f) {
+            if (f) preencherDadosFornecedor(f);
+            else {
                 document.getElementById('carga-codigo-fornecedor').value = '';
-                return;
+                const ufCorrespondente = ufPorNomeFornecedor(nome);
+                if (ufCorrespondente) {
+                    document.getElementById('carga-origem').value = ufCorrespondente;
+                    aoMudarOrigem();
+                }
             }
-            const iguais = FORNECEDORES.filter(item => normalizarTexto(item.nome) === normalizarTexto(nome));
-            preencherDadosFornecedor(f, iguais.length === 1);
-            if (iguais.length > 1) document.getElementById('carga-codigo-fornecedor').value = '';
-        }
-
-        function atualizarAvisoCidade() {
-            const cidade = document.getElementById('carga-cidade-origem').value.trim();
-            document.getElementById('cidade-origem-aviso').textContent = cidade
-                ? 'Cidade sugerida pelo cadastro. Confirme o local real de coleta.'
-                : 'Cidade não confirmada: informe o município real de coleta antes de salvar, se disponível.';
         }
 
         // Configuração do Firebase
@@ -663,7 +649,9 @@
                 amber: 'bg-amber-50 border-amber-300 text-amber-900',
                 rose: 'bg-rose-50 border-rose-300 text-rose-900'
             };
-            banner.className = `border rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs shadow-sm ${classes[tom]}`;
+            const avisoNecessario = modoRecuperacao || Boolean(firebaseErro || erroGravacao) ||
+                (!firebaseConectado && firebaseCarregado && qtd > 0) || Boolean(erroBackup);
+            banner.className = `border rounded-xl px-4 py-3 text-xs shadow-sm ${classes[tom]} ${avisoNecessario ? '' : 'hidden'}`;
         }
 
         function aplicarSnapshotFirebase(valor) {
@@ -823,7 +811,7 @@
                     backupParaRecuperar = null;
                     salvarAlteracoesDeCargas(recebidas);
                     renderizar();
-                    alert('Backup importado para este navegador. Confira no painel o status da sincronização com Firebase.');
+                    alert('Backup importado. Os dados serão sincronizados em segundo plano; você será avisado se houver erro.');
                 } catch (erro) {
                     alert(`Erro ao importar backup: ${erro.message}`);
                 } finally {
@@ -980,160 +968,192 @@
             // Não renderiza imediatamente, evitando retirar o foco do campo editado.
         }
 
-        // Evita confundir "Cód.Fornec." com a coluna "Fornecedor".
-        function extrairNomeFornecedor(row) {
-            const chaves = Object.keys(row);
-            const exatas = ['FORNECEDOR', 'NOMEFORNECEDOR', 'RAZAOSOCIAL', 'NOMEEMPRESA'];
-            for (const termo of exatas) {
-                const chave = chaves.find(k => normalizarTexto(k) === termo);
-                if (chave && row[chave] != null && String(row[chave]).trim()) return String(row[chave]).trim();
-            }
-            const chavesNome = chaves.filter(k => !normalizarTexto(k).includes('COD') && !normalizarTexto(k).includes('ID'));
-            const chave = chavesNome.find(k => ['FORNECEDOR', 'FORNEC', 'RAZAO', 'EMPRESA'].some(t => normalizarTexto(k).includes(t)));
-            return chave && row[chave] != null ? String(row[chave]).trim() : '';
+        function classificarColunaFornecedor(coluna) {
+            const nome = normalizarTexto(coluna);
+            if (/^(COD|CODIGO|ID|NUM|NUMERO|NRO|CD)(DO|DA)?(FORN|FORNEC|FORNECEDOR)/.test(nome) ||
+                /^(FORN|FORNEC|FORNECEDOR)(COD|CODIGO|ID)/.test(nome)) return 'codigo';
+            if (['FORNECEDOR', 'FORNEC', 'NOMEFORNECEDOR', 'NOMEFORNEC', 'RAZAOSOCIAL',
+                'NOMERAZAOSOCIAL', 'NOMEEMPRESA', 'EMPRESAFORNECEDORA', 'NOMEFANTASIA'].includes(nome)) return 'nome';
+            if (!/(COD|ID|NUMERO|TELEFONE|EMAIL|ENDERECO|CEP|CNPJ|CPF|CIDADE|UF)/.test(nome) &&
+                /(FORNECEDOR|FORNEC|RAZAOSOCIAL)/.test(nome)) return 'nome';
+            return '';
         }
 
-        function extrairCodigoFornecedor(row) {
-            const chaves = Object.keys(row);
-            const termos = ['CODFORNEC', 'CODIGOFORNECEDOR', 'IDFORNECEDOR', 'CODFORNECEDOR', 'CODFORN'];
-            const chave = chaves.find(k => termos.some(termo => normalizarTexto(k).includes(termo)));
-            const valor = chave ? row[chave] : '';
-            return valor == null ? '' : String(valor).trim();
+        function acharColunasFornecedor(linhas) {
+            const colunas = [...new Set(linhas.slice(0, 30).flatMap(row => Object.keys(row)))];
+            const codigo = colunas.find(k => classificarColunaFornecedor(k) === 'codigo') || '';
+            const nome = colunas.find(k => classificarColunaFornecedor(k) === 'nome') || '';
+            if (codigo || nome) return { codigo, nome };
+            // Cabeçalhos incomuns: pedir o nome da coluna em vez de importar tudo "A PREENCHER".
+            const opcoes = colunas.map((coluna, i) => `${i + 1}. ${coluna}`).join('\n');
+            const valor = prompt(
+                'Não encontrei uma coluna de fornecedor na planilha.\n' +
+                'Informe o NÚMERO da coluna que contém o CÓDIGO ou o NOME do fornecedor.\n' +
+                'Digite 0 caso a planilha não tenha essa informação.\n\n' + opcoes
+            );
+            if (valor === null || String(valor).trim() === '0') return { codigo: '', nome: '' };
+            const indice = Number(String(valor).trim());
+            if (!Number.isInteger(indice) || indice < 1 || indice > colunas.length) {
+                alert('Coluna inválida. A importação continuará sem identificação automática do fornecedor.');
+                return { codigo: '', nome: '' };
+            }
+            const escolhida = colunas[indice - 1];
+            return { codigo: escolhida, nome: escolhida };
+        }
+
+        function extrairDadosFornecedor(row, colunas) {
+            const valorCodigo = String(colunas.codigo && row[colunas.codigo] != null ? row[colunas.codigo] : '').trim();
+            const valorNome = String(colunas.nome && row[colunas.nome] != null ? row[colunas.nome] : '').trim();
+            let codigo = /^\d{1,8}(?:\.0+)?$/.test(valorCodigo) ? valorCodigo.replace(/\.0+$/, '') : '';
+            let nome = valorNome;
+            // A coluna "Fornecedor" pode trazer só o código, ou "13 - NUTRIZA...".
+            const composto = valorNome.match(/^#?\s*(\d{1,8})\s*[-–:]\s*(.+)$/);
+            if (composto) {
+                if (!codigo) codigo = composto[1];
+                nome = composto[2].trim();
+            } else if (/^#?\d{1,8}(?:\.0+)?$/.test(valorNome)) {
+                if (!codigo) codigo = valorNome.replace(/^#/, '').replace(/\.0+$/, '');
+                nome = '';
+            }
+            if (!codigo) {
+                const codigoComposto = valorCodigo.match(/^#?\s*(\d{1,8})\s*[-–:]\s*(.+)$/);
+                if (codigoComposto) {
+                    codigo = codigoComposto[1];
+                    if (!nome || nome === valorCodigo) nome = codigoComposto[2].trim();
+                }
+            }
+            const cadastro = localizarFornecedor(codigo, nome);
+            const iguais = fornecedoresComMesmoNome(nome);
+            const codigoSeguro = cadastro ? (codigo || (iguais.length === 1 ? cadastro.codigo : '')) : codigo;
+            const nomeSeguro = cadastro?.nome || nome;
+            const ufSegura = cadastro?.uf || ufPorNomeFornecedor(nome);
+            return { codigo: codigoSeguro, nome: nomeSeguro, uf: ufSegura };
+        }
+
+        function aplicarDadosFornecedorNaCarga(carga, dados, ufPlanilha) {
+            let modificou = false;
+            const nomeAtualVazio = !carga.fornecedor || normalizarTexto(carga.fornecedor) === 'APREENCHER';
+            // Ao reimportar, a UF do fornecedor identificado na planilha substitui origem antiga sugerida por padrão.
+            const origemPlanilhaConfiavel = Boolean(dados.uf);
+            // Nome trazido explicitamente pela planilha; também completa pedidos antigos.
+            if (dados.nome && nomeAtualVazio) { carga.fornecedor = dados.nome; modificou = true; }
+            if (dados.codigo && !carga.codigoFornecedor) { carga.codigoFornecedor = dados.codigo; modificou = true; }
+            if ((!carga.origem || origemPlanilhaConfiavel) && (dados.uf || ufPlanilha) && carga.origem !== (dados.uf || ufPlanilha)) {
+                carga.origem = dados.uf || ufPlanilha;
+                modificou = true;
+            }
+            const cadastro = localizarFornecedor(carga.codigoFornecedor, carga.fornecedor, carga.origem);
+            if (cadastro && (!carga.fornecedor || normalizarTexto(carga.fornecedor) === 'APREENCHER')) {
+                carga.fornecedor = cadastro.nome;
+                modificou = true;
+            }
+            if (cadastro && !carga.origem) { carga.origem = cadastro.uf; modificou = true; }
+            return modificou;
+        }
+
+        function obterCodigoProduto(row) {
+            const colunas = Object.keys(row);
+            const exatas = ['CODIGOPRODUTO', 'CODPRODUTO', 'CODITEM', 'CODIGOITEM', 'SKU', 'CODBARRAS', 'EAN', 'ITEM'];
+            const chave = colunas.find(k => exatas.includes(normalizarTexto(k))) ||
+                colunas.find(k => /^(COD|CODIGO)(PROD|PRODUTO|ITEM|MATERIAL)$/.test(normalizarTexto(k))) ||
+                colunas.find(k => ['CODIGO', 'COD'].includes(normalizarTexto(k)));
+            return chave && row[chave] != null ? String(row[chave]).trim() : '-';
         }
 
         function importarPlanilhaDeItens(event) {
             const file = event.target.files[0];
             if (!file) return;
             if (!firebaseCarregado && cargas.length === 0) {
-                alert('Aguarde o carregamento inicial do Firebase antes de importar. Isso evita pedidos duplicados. Se estiver sem internet, abra o programa novamente quando houver conexão.');
+                alert('Aguarde o carregamento inicial dos pedidos antes de importar, para evitar duplicações.');
                 event.target.value = '';
                 return;
             }
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                     const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-
-                    if (json.length === 0) {
-                        alert("A planilha importada está vazia!");
-                        return;
-                    }
-
+                    if (!json.length) { alert('A planilha importada está vazia!'); return; }
                     const colunaQuantidade = escolherColunaQuantidade(json);
-                    if (!colunaQuantidade) return; // Não altera dados se a coluna não for definida.
+                    if (!colunaQuantidade) return;
+                    const colunasFornecedor = acharColunasFornecedor(json);
+                    const fornecedoresPorPedido = new Map();
+                    const obterPedido = row => {
+                        let numero = extrairValorColuna(row, ['numerodopedido', 'numeropedido', 'nropedido', 'numpedido', 'pedido', 'ordem', 'num', 'doc']);
+                        if (!numero) numero = String(Object.values(row)[0] ?? '').trim();
+                        return numero;
+                    };
+                    // A informação do fornecedor pode aparecer somente em algumas linhas do mesmo pedido.
+                    json.forEach(row => {
+                        const pedido = obterPedido(row);
+                        if (!pedido) return;
+                        const dados = extrairDadosFornecedor(row, colunasFornecedor);
+                        const anterior = fornecedoresPorPedido.get(pedido) || { codigo: '', nome: '', uf: '' };
+                        fornecedoresPorPedido.set(pedido, {
+                            codigo: anterior.codigo || dados.codigo,
+                            nome: anterior.nome || dados.nome,
+                            uf: anterior.uf || dados.uf
+                        });
+                    });
 
                     const pedidosProcessadosNoArquivo = new Set();
                     const cargasAlteradasNoArquivo = new Set();
                     let produtosAdicionados = 0;
                     let quantidadesSemValor = 0;
                     let novasCargasCriadas = 0;
-
+                    let pedidosPreenchidos = 0;
                     json.forEach(row => {
-                        let pedido = extrairValorColuna(row, ['pedido', 'ped', 'ordem', 'num', 'doc']);
-                        
-                        if (!pedido) {
-                            const valores = Object.values(row);
-                            if (valores.length > 0) pedido = String(valores[0]).trim();
-                        }
-
+                        const pedido = obterPedido(row);
                         if (!pedido) return;
-
                         let carga = cargas.find(c => String(c.numeroPedido).trim() === pedido);
-
+                        const dados = fornecedoresPorPedido.get(pedido) || { codigo: '', nome: '', uf: '' };
+                        const ufPlanilha = extrairValorColuna(row, ['estadoorigem', 'uforigem', 'uf']).toUpperCase();
                         if (!carga) {
-                            const codigoFornecedorPlanilha = extrairCodigoFornecedor(row);
-                            const fornecedorPlanilha = extrairNomeFornecedor(row) || 'A PREENCHER';
-                            const registroFornecedor = localizarFornecedor(codigoFornecedorPlanilha, fornecedorPlanilha);
-                            const ufPlanilha = extrairValorColuna(row, ['estadoorigem', 'uforigem', 'uf']) || '';
-                            const cidadePlanilha = extrairValorColuna(row, ['cidadeorigem', 'municipioorigem', 'cidade']) || '';
-                            const motoristaPlanilha = extrairValorColuna(row, ['motorista', 'mot', 'condutor', 'transporte']) || 'A PREENCHER';
-                            const tipoFretePlanilha = extrairValorColuna(row, ['frete', 'tipo', 'cif', 'fob']).toUpperCase().includes('CIF') ? 'CIF' : 'FOB';
-
+                            const motorista = extrairValorColuna(row, ['motorista', 'mot', 'condutor', 'transporte']) || 'A PREENCHER';
+                            const tipoFrete = extrairValorColuna(row, ['frete', 'tipo', 'cif', 'fob']).toUpperCase().includes('CIF') ? 'CIF' : 'FOB';
                             carga = {
-                                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-                                tipoFrete: tipoFretePlanilha,
-                                origem: registroFornecedor?.uf || ufPlanilha.toUpperCase(),
-                                cidadeOrigem: registroFornecedor?.cidade || cidadePlanilha,
-                                codigoFornecedor: codigoFornecedorPlanilha || ((registroFornecedor && FORNECEDORES.filter(f => normalizarTexto(f.nome) === normalizarTexto(fornecedorPlanilha)).length === 1) ? registroFornecedor.codigo : ''),
-                                refHoras: '48:00:00',
-                                numeroPedido: pedido,
-                                fornecedor: (registroFornecedor && codigoFornecedorPlanilha) ? registroFornecedor.nome : fornecedorPlanilha,
-                                motorista: motoristaPlanilha,
-                                dataColeta: '',
-                                horaColeta: '',
-                                prevChegada: '',
-                                entrada: false,
-                                naPorta: false,
-                                carregado: false,
-                                descarregada: 'NÃO',
-                                produtos: []
+                                id: Date.now().toString() + Math.random().toString(36).slice(2, 8),
+                                tipoFrete,
+                                origem: dados.uf || ufPlanilha,
+                                codigoFornecedor: dados.codigo,
+                                refHoras: '48:00:00', numeroPedido: pedido,
+                                fornecedor: dados.nome || 'A PREENCHER', motorista,
+                                dataColeta: '', horaColeta: '', prevChegada: '',
+                                entrada: false, naPorta: false, carregado: false,
+                                descarregada: 'NÃO', produtos: []
                             };
-
                             cargas.unshift(carga);
                             novasCargasCriadas++;
                         }
-
-                        // Também completa a cidade/UF das cargas existentes quando houver fornecedor identificado.
-                        const codigoImportado = extrairCodigoFornecedor(row);
-                        const fornecedorImportado = extrairNomeFornecedor(row);
-                        const fornecedorIdentificado = localizarFornecedor(codigoImportado, fornecedorImportado || carga.fornecedor, carga.origem);
-                        if (fornecedorIdentificado) {
-                            if (!carga.codigoFornecedor) {
-                                const fornecsIguais = FORNECEDORES.filter(f => normalizarTexto(f.nome) === normalizarTexto(fornecedorImportado || carga.fornecedor));
-                                if (codigoImportado || fornecsIguais.length === 1) carga.codigoFornecedor = fornecedorIdentificado.codigo;
-                            }
-                            if (!carga.cidadeOrigem && (!carga.origem || carga.origem === fornecedorIdentificado.uf)) carga.cidadeOrigem = fornecedorIdentificado.cidade;
-                            if (!carga.origem) carga.origem = fornecedorIdentificado.uf;
-                        }
-
                         if (!pedidosProcessadosNoArquivo.has(pedido)) {
-                            carga.produtos = []; 
+                            if (aplicarDadosFornecedorNaCarga(carga, dados, ufPlanilha)) pedidosPreenchidos++;
+                            carga.produtos = [];
                             pedidosProcessadosNoArquivo.add(pedido);
                         }
-
-                        const codigo = extrairValorColuna(row, ['codigo', 'cod', 'item', 'sku']) || '-';
-                        const descricao = extrairValorColuna(row, ['descricao', 'desc', 'produto', 'nome']) || '-';
+                        const codigo = obterCodigoProduto(row);
+                        const descricao = extrairValorColuna(row, ['descricaoproduto', 'descricaodoitem', 'descricao', 'desc', 'nomeproduto', 'produto']) || '-';
                         const qtd = lerQuantidadePlanilha(row, colunaQuantidade);
                         if (qtd === '') quantidadesSemValor++;
                         const unidade = extrairValorColuna(row, ['unidade', 'und', 'un', 'emb']) || 'CX';
-
-                        carga.produtos.push({
-                            codigo: codigo,
-                            descricao: descricao,
-                            qtd: qtd,
-                            unidade: unidade
-                        });
-
+                        carga.produtos.push({ codigo, descricao, qtd, unidade });
                         cargasAlteradasNoArquivo.add(carga);
                         produtosAdicionados++;
                     });
-
-                    let msg = `Importação realizada!\n• Total de itens lidos: ${produtosAdicionados}`;
-                    msg += `\n• Coluna de quantidade utilizada: ${colunaQuantidade}`;
-                    if (novasCargasCriadas > 0) {
-                        msg += `\n• Novas cargas criadas: ${novasCargasCriadas} (Clique em 'Editar' para preencher os dados de transporte)`;
-                    }
-                    if (quantidadesSemValor > 0) {
-                        msg += `\n⚠ ${quantidadesSemValor} item(ns) com quantidade vazia na planilha. Eles aparecerão como "Não informada", e você poderá editar o valor na lista.`;
-                    }
-                    if (produtosAdicionados === 0) {
-                        alert('Nenhum item válido foi encontrado: nenhuma carga foi modificada.');
-                        return;
-                    }
-                    // A escrita no Firebase pode demorar ou falhar. O painel indica o status verdadeiro.
+                    if (!produtosAdicionados) { alert('Nenhum item válido foi encontrado. Nenhuma carga foi modificada.'); return; }
                     salvarAlteracoesDeCargas([...cargasAlteradasNoArquivo]);
                     renderizar();
-                    alert(msg + '\n\nAs alterações estão guardadas neste navegador. Confira a faixa de status para saber quando o Firebase confirmar a sincronização.');
+                    const naoIdentificados = [...cargasAlteradasNoArquivo].filter(c => !c.fornecedor || normalizarTexto(c.fornecedor) === 'APREENCHER').length;
+                    let msg = `Importação realizada!\n• Itens: ${produtosAdicionados}\n• Quantidades lidas da coluna: ${colunaQuantidade}\n• Novas cargas: ${novasCargasCriadas}\n• Pedidos com dados de fornecedor complementados: ${pedidosPreenchidos}`;
+                    if (naoIdentificados) msg += `\n⚠ ${naoIdentificados} pedido(s) continuam sem fornecedor. A planilha precisa conter o código ou o nome para preencher automaticamente.`;
+                    if (quantidadesSemValor) msg += `\n⚠ ${quantidadesSemValor} quantidade(s) sem informação.`;
+                    alert(msg + '\n\nAs alterações serão sincronizadas em segundo plano. Um aviso aparecerá se ocorrer algum problema.');
                 } catch (error) {
-                    alert("Erro ao ler a planilha. Certifique-se de que é um arquivo Excel (.xlsx, .xls) ou CSV válido.");
+                    alert('Erro ao importar a planilha. Verifique o formato Excel (.xlsx, .xls) ou CSV.');
                     console.error(error);
                 } finally {
-                    document.getElementById('input-importar-itens').value = ''; 
+                    document.getElementById('input-importar-itens').value = '';
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -1209,7 +1229,6 @@
             return cargas.filter(c => {
                 const matchBusca = (c.fornecedor || '').toLowerCase().includes(busca)
                                 || (c.codigoFornecedor || '').toLowerCase().includes(busca)
-                                || (obterCidadeCarga(c) || '').toLowerCase().includes(busca)
                                 || (c.motorista || '').toLowerCase().includes(busca)
                                 || (c.numeroPedido || '').toLowerCase().includes(busca);
                 const matchOrigem = !origem || c.origem === origem;
@@ -1264,7 +1283,6 @@
                     </td>
                     <td class="py-2.5 px-3 font-semibold text-slate-800">
                         <span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-200">${c.origem || 'UF?'}</span>
-                        <span class="text-[11px] ml-1 ${obterCidadeCarga(c) ? 'text-slate-700' : 'text-amber-700 italic'}">${obterCidadeCarga(c) || 'Cidade a confirmar'}</span>
                     </td>
                     <td class="py-2.5 px-3">
                         <div class="flex items-center space-x-2">
@@ -1432,7 +1450,7 @@
                                 </div>
                             </div>
                             <div class="font-bold truncate text-slate-800 leading-tight">${c.fornecedor}</div>
-                            <div class="text-[10px] text-slate-600 truncate">📍 ${obterCidadeCarga(c) || 'Cidade a confirmar'} / ${c.origem || '?'}</div>
+                            <div class="text-[10px] text-slate-600 truncate">UF de origem: ${c.origem || 'não informada'}</div>
                             <div class="text-[10px] text-slate-600 truncate mt-1 flex items-center space-x-1">
                                 <span>👤</span>
                                 <span>${c.motorista || 'Sem Motorista'}</span>
@@ -1476,7 +1494,6 @@
             document.getElementById('carga-id').value = '';
             document.getElementById('carga-tipo-frete').value = 'FOB';
             document.getElementById('carga-origem').value = '';
-            atualizarAvisoCidade();
             document.getElementById('btn-excluir-carga').classList.add('hidden');
             aoMudarOrigem();
             document.getElementById('modal-carga').classList.remove('hidden');
@@ -1496,13 +1513,11 @@
             document.getElementById('carga-pedido').value = c.numeroPedido || '';
             document.getElementById('carga-codigo-fornecedor').value = c.codigoFornecedor || '';
             document.getElementById('carga-fornecedor').value = c.fornecedor === 'A PREENCHER' ? '' : c.fornecedor;
-            document.getElementById('carga-cidade-origem').value = obterCidadeCarga(c);
             document.getElementById('carga-motorista').value = c.motorista === 'A PREENCHER' ? '' : c.motorista;
             document.getElementById('carga-data-coleta').value = c.dataColeta || '';
             document.getElementById('carga-hora-coleta').value = c.horaColeta || '';
             document.getElementById('carga-prev-chegada').value = c.prevChegada || '';
 
-            atualizarAvisoCidade();
             document.getElementById('btn-excluir-carga').classList.remove('hidden');
             document.getElementById('modal-carga').classList.remove('hidden');
         }
@@ -1529,7 +1544,7 @@
                 __firebaseKey: cargaExistente?.__firebaseKey || undefined,
                 tipoFrete: document.getElementById('carga-tipo-frete').value || 'FOB',
                 origem: document.getElementById('carga-origem').value,
-                cidadeOrigem: document.getElementById('carga-cidade-origem').value.trim(),
+                ...(cargaExistente && cargaExistente.cidadeOrigem ? { cidadeOrigem: cargaExistente.cidadeOrigem } : {}),
                 codigoFornecedor: document.getElementById('carga-codigo-fornecedor').value.trim(),
                 refHoras: document.getElementById('carga-ref-horas').value,
                 numeroPedido: document.getElementById('carga-pedido').value,
